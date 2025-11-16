@@ -267,7 +267,6 @@ getgenv().morte = {
         -- ["SwitchHitpart"] = Enum.KeyCode.Y,
         ["SwitchSilentMode"] = Enum.KeyCode.G,
         -- ["LockMouseTarget"] = Enum.KeyCode.G,
-        -- ["SwitchFlyMode"] = Enum.KeyCode.B,
         -- ["AdjustTracerTransparency"] = Enum.KeyCode.J, -- NEW: Key to adjust tracer transparency
         -- ["AdjustLockOnlyFOV"] = Enum.KeyCode.L, -- NEW: Key to adjust LockOnly FOV
         -- ["ChangeLockOnlyFOVColor"] = Enum.KeyCode.O, -- NEW: Key to change LockOnly FOV color
