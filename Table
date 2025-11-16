@@ -116,23 +116,6 @@ getgenv().morte = {
             ["SmoothSpeed"] = 0.1,
             ["Key"] = Enum.KeyCode.F
         },
-        ["Fly"] = {
-            ["Enabled"] = true,
-            ["Active"] = false,
-            ["Speed"] = 50,
-            ["Mode"] = "Velocity",
-            ["VerticalSpeed"] = 25,
-            ["Type"] = "Toggle",
-            ["Key"] = Enum.KeyCode.LeftAlt,
-            ["Keys"] = {
-                ["Forward"] = Enum.KeyCode.W,
-                ["Backward"] = Enum.KeyCode.S,
-                ["Left"] = Enum.KeyCode.A,
-                ["Right"] = Enum.KeyCode.D,
-                ["Up"] = Enum.KeyCode.Space,
-                ["Down"] = Enum.KeyCode.LeftControl
-            }
-        },
         ["WalkSpeed"] = {
             ["Enabled"] = true,
             ["Active"] = false,
