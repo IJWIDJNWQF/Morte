@@ -1,0 +1,314 @@
+-- Advanced config with Vector3 Prediction
+local config = {
+    ["Combat"] = {
+        ["Aimlock"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Smoothness"] = 0.45,
+            ["Prediction"] = Vector3.new(0.13, 0.05, 0.05),
+            ["Type"] = "Hold",
+            ["AimMode"] = "MouseMove",
+            ["StickyAim"] = true,
+            ["StickyStrength"] = 0.3,
+            ["Randomize"] = 0.02,
+            ["FOVRadius"] = 1000,
+            ["UseFOV"] = true,
+            ["HitPart"] = "Head",
+            ["Key"] = Enum.KeyCode.Q,
+            ["Whitelisted"] = {
+                ["Enabled"] = false,
+                ["Weapons"] = {
+                    ["[Double-Barrel SG]"] = true,
+                    ["[Revolver]"] = true,
+                    ["[TacticalShotgun]"] = true
+                }
+            },
+            -- NEW: Shake settings
+            ["Shake"] = {
+                ["Enabled"] = true,
+                ["Vertical"] = {
+                    ["Negative"] = 5,
+                    ["Positive"] = 5
+                },
+                ["Horizontal"] = {
+                    ["Negative"] = 5,
+                    ["Positive"] = 5
+                }
+            }
+        },
+        ["SilentAim"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["HitPart"] = "Head",
+            ["HitChance"] = 100,
+            ["Prediction"] = Vector3.new(0, 0, 0),
+            ["FOVRadius"] = 1000,
+            ["ShowFOV"] = true,
+            ["SilentMode"] = "FOV",
+            ["Type"] = "Toggle",
+            ["LockedTarget"] = nil,
+            ["Key"] = Enum.KeyCode.H,
+            ["Whitelisted"] = {
+                ["Enabled"] = false,
+                ["Weapons"] = {
+                    ["[Double-Barrel SG]"] = true,
+                    ["[Revolver]"] = true,
+                    ["[TacticalShotgun]"] = true 
+                }
+            }
+        },
+        ["Triggerbot"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Key"] = Enum.KeyCode.E,
+            ["Type"] = "Toggle", -- Hold, Toggle
+            ["Delay"] = 0,
+            ["Delays"] = {
+                ["Enabled"] = false,
+                ["Guns"] = {
+                    ["[Double-Barrel SG]"] = 0,
+                    ["[Revolver]"] = 0,
+                    ["[TacticalShotgun]"] = 0
+                }
+            }
+        },
+        ["Checks"] = {
+            ["TeamCheck"] = false,
+            ["WallCheck"] = false,
+            ["VisibilityCheck"] = false,
+            ["KnockCheck"] = false,
+            ["KnifeCheck"] = {  -- NEW: ระบบตรวจสอบมีด
+                ["Enabled"] = true,
+                ["IgnoreKnife"] = true   -- ไม่ใช้ระบบ Aim เมื่อถือมีด
+            },
+            ["HealthCheck"] = {
+                ["Enabled"] = false,
+                ["MinHealth"] = 10
+            }
+        },
+        -- NEW: Hitbox settings
+        ["Hitbox"] = {
+            ["Enabled"] = true,
+            ["VisualHitbox"] = {
+                ["Enabled"] = false,
+                ["Color"] = Color3.fromRGB(255, 0, 0),
+                ["Transparency"] = 0.5,
+                ["Filled"] = false
+            },
+            ["Extend"] = {
+                ["X"] = 5,
+                ["Y"] = 5
+            }
+        }
+    },
+    ["Movement"] = {
+        ["Orbit"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Speed"] = 3,
+            ["Radius"] = 5,
+            ["Height"] = 3,
+            ["Type"] = "Toggle",
+            ["Target"] = nil,
+            ["Key"] = Enum.KeyCode.P
+        },
+        ["Teleport"] = {
+            ["Enabled"] = true,
+            ["Type"] = "Instant",
+            ["SmoothSpeed"] = 0.1,
+            ["Key"] = Enum.KeyCode.F
+        },
+        ["Fly"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Speed"] = 50,
+            ["Mode"] = "Velocity",
+            ["VerticalSpeed"] = 25,
+            ["Type"] = "Toggle",
+            ["Key"] = Enum.KeyCode.LeftAlt,
+            ["Keys"] = {
+                ["Forward"] = Enum.KeyCode.W,
+                ["Backward"] = Enum.KeyCode.S,
+                ["Left"] = Enum.KeyCode.A,
+                ["Right"] = Enum.KeyCode.D,
+                ["Up"] = Enum.KeyCode.Space,
+                ["Down"] = Enum.KeyCode.LeftControl
+            }
+        },
+        ["WalkSpeed"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Speed"] = 250,
+            ["Type"] = "Toggle",
+            ["Key"] = Enum.KeyCode.C
+        },
+        ["JumpPower"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Power"] = 100,
+            ["Type"] = "Toggle",
+            ["Key"] = Enum.KeyCode.M
+        },
+        ["Spectate"] = {
+            ["Enabled"] = true,
+            ["Active"] = false,
+            ["Type"] = "Toggle",
+            ["Target"] = nil,
+            ["Key"] = Enum.KeyCode.Z,
+            ["CameraOffset"] = CFrame.new(0, 5, -10),
+            ["ReturnOnDeath"] = true -- NEW: Return to self on death
+        }
+    },
+    ["Visuals"] = {
+        -- Aimbot FOV Settings - FIXED: Only use FOVRadius from Aimlock config
+        ["AimbotFOV"] = {
+            ["Show"] = true,
+            ["Color"] = Color3.fromRGB(255, 0, 0),
+            ["Thickness"] = 2,
+            ["Transparency"] = 0.3,
+            ["Filled"] = false
+        },
+        -- Silent Aim FOV Settings - FIXED: Only use FOVRadius from SilentAim config
+        ["SilentAimFOV"] = {
+            ["Show"] = false,
+            ["Color"] = Color3.fromRGB(255, 0, 0),
+            ["Thickness"] = 2,
+            ["Transparency"] = 0.3,
+            ["Filled"] = false
+        },
+        -- LockOnly FOV Settings - FIXED: Only use FOVRadius from SilentAim config
+        ["LockOnlyFOV"] = {
+            ["Show"] = false,
+            ["Color"] = Color3.fromRGB(255, 0, 0), -- Gold color for LockOnly
+            ["Thickness"] = 2,
+            ["Transparency"] = 0.3,
+            ["Filled"] = false,
+            ["AutoLock"] = true -- NEW: Auto-lock enemies in FOV
+        },
+        ["Tracer"] = {
+            ["Show"] = true,
+            ["Color"] = Color3.fromRGB(255, 0, 0),
+            ["Thickness"] = 0.5,
+            ["Transparency"] = 0.5, -- NEW: Added transparency for tracer
+            ["Colors"] = {
+                Color3.fromRGB(255,0,0),
+                Color3.fromRGB(0, 255, 0),
+                Color3.fromRGB(0, 0, 255),
+                Color3.fromRGB(255, 255, 0),
+                Color3.fromRGB(255, 0, 255),
+                Color3.fromRGB(0, 255, 255),
+                Color3.fromRGB(255, 165, 0),
+                Color3.fromRGB(255, 255, 255),
+                Color3.fromRGB(0, 0, 0),
+                Color3.fromRGB(128, 0, 128),
+                Color3.fromRGB(255, 192, 203),
+                Color3.fromRGB(165, 42, 42),
+                Color3.fromRGB(64, 224, 208),
+                Color3.fromRGB(255, 20, 147),
+                Color3.fromRGB(0, 191, 255),
+                Color3.fromRGB(50, 205, 50),
+                Color3.fromRGB(255, 140, 0),
+                Color3.fromRGB(147, 112, 219),
+                Color3.fromRGB(255, 215, 0),
+                Color3.fromRGB(192, 192, 192)
+            },
+            ["ColorNames"] = {
+                "Red", "Green", "Blue", "Yellow", "Magenta", 
+                "Cyan", "Orange", "White", "Black", "Purple", 
+                "Pink", "Brown", "Turquoise", "Deep Pink", "Sky Blue",
+                "Lime", "Dark Orange", "Purple", "Gold", "Silver"
+            },
+            ["CurrentColorIndex"] = 1,
+            ["Key"] = Enum.KeyCode.K
+        },
+        ["TargetInfo"] = {
+            ["Show"] = true,
+            ["Color"] = Color3.fromRGB(255, 255, 255),
+            ["Size"] = 16
+        },
+        -- NEW: ESP Settings
+        ["ESP"] = {
+            ["Enabled"] = true,
+            ["ESPBox"] = {
+                ["Enabled"] = false,
+                ["Type"] = "2D", -- 2D, 3D, Corner
+                ["Filled"] = false,
+                ["Color"] = Color3.fromRGB(255, 0, 0),
+                ["StrokeColor"] = Color3.fromRGB(0, 0, 0),
+                ["Thickness"] = 1,
+                ["Transparency"] = 0.3
+            },
+            ["ESPDistance"] = {
+                ["Enabled"] = false,
+                ["Color"] = Color3.fromRGB(255, 0, 0),
+                ["Size"] = 14,
+                ["Position"] = "Top" -- Top, Bottom, Left, Right
+            },
+            ["ESPName"] = {
+                ["Enabled"] = true,
+                ["DisplayName"] = true,  -- ใหม่: ถ้าเปิดใช้ชื่อเล่น, ปิดใช้ชื่อจริง
+                ["Color"] = Color3.fromRGB(255, 0, 0),
+                ["Size"] = 14,
+                ["Position"] = "Bottom" -- Top, Bottom, Left, Right
+            },
+            ["ESPHealth"] = {
+                ["Enabled"] = false,
+                ["Color"] = Color3.fromRGB(0, 255, 0),
+                ["Size"] = 14,
+                ["Position"] = "Left", -- Top, Bottom, Left, Right
+                ["HealthType"] = "Text", -- Text, Bar
+                ["BarWidth"] = 100,
+                ["BarHeight"] = 5,
+                ["BarColor"] = Color3.fromRGB(0, 255, 0),
+                ["BarBackgroundColor"] = Color3.fromRGB(255, 0, 0)
+            },
+            ["ESPSnaplines"] = {
+                ["Enabled"] = false,
+                ["Color"] = Color3.fromRGB(255, 0, 0),
+                ["Thickness"] = 1,
+                ["Transparency"] = 0.5,
+                ["Origin"] = "Bottom" -- Bottom, Center, Top
+            },
+            ["LimitDistance"] = {
+                ["Enabled"] = false,
+                ["MaxDistance"] = 500
+            }
+        },
+        ["Mods"] = {
+            ["AntiAimViewer"] = true
+        },
+        ["UI"] = {
+            ["Enabled"] = true,
+            ["Visible"] = false,
+            ["Position"] = UDim2.new(0.5, -200, 0.5, -150),
+            ["BackgroundColor"] = Color3.fromRGB(30, 30, 30),
+            ["TextColor"] = Color3.fromRGB(255, 255, 255),
+            ["ButtonColor"] = Color3.fromRGB(50, 50, 50),
+            ["ButtonHoverColor"] = Color3.fromRGB(70, 70, 70),
+            ["Key"] = Enum.KeyCode.RightBracket
+        }
+    },
+    ["Settings"] = {
+        -- ["SwitchAimMode"] = Enum.KeyCode.T,
+        -- ["SwitchHitpart"] = Enum.KeyCode.Y,
+        ["SwitchSilentMode"] = Enum.KeyCode.G,
+        -- ["LockMouseTarget"] = Enum.KeyCode.G,
+        -- ["SwitchFlyMode"] = Enum.KeyCode.B,
+        -- ["AdjustTracerTransparency"] = Enum.KeyCode.J, -- NEW: Key to adjust tracer transparency
+        -- ["AdjustLockOnlyFOV"] = Enum.KeyCode.L, -- NEW: Key to adjust LockOnly FOV
+        -- ["ChangeLockOnlyFOVColor"] = Enum.KeyCode.O, -- NEW: Key to change LockOnly FOV color
+        -- ["AdjustSilentAimFOV"] = Enum.KeyCode.I, -- NEW: Key to adjust Silent Aim FOV
+        -- ["ChangeSilentAimFOVColor"] = Enum.KeyCode.U, -- NEW: Key to change Silent Aim FOV color
+        -- ["AdjustAimbotFOV"] = Enum.KeyCode.Y, -- NEW: Key to adjust Aimbot FOV
+        -- ["ChangeAimbotFOVColor"] = Enum.KeyCode.T, -- NEW: Key to change Aimbot FOV color
+        -- ["HybridMode"] = Enum.KeyCode.R, -- NEW: Toggle hybrid mode (both aiming systems together)
+        -- ["ToggleAimbotFOVSettings"] = Enum.KeyCode.F1, -- NEW: Toggle Aimbot FOV settings UI
+        -- ["ToggleSilentAimFOVSettings"] = Enum.KeyCode.F2, -- NEW: Toggle Silent Aim FOV settings UI
+        -- ["ToggleLockOnlyFOVSettings"] = Enum.KeyCode.F3, -- NEW: Toggle LockOnly FOV settings UI
+        -- ["ToggleShake"] = Enum.KeyCode.N, -- NEW: Toggle Aimbot Shake
+        -- ["ToggleVisualHitbox"] = Enum.KeyCode.V, -- NEW: Toggle Visual Hitbox
+        -- ["AdjustHitboxExtendX"] = Enum.KeyCode.Comma, -- NEW: Adjust Hitbox Extend X
+        -- ["AdjustHitboxExtendY"] = Enum.KeyCode.Period -- NEW: Adjust Hitbox Extend Y
+    }
+}
+
