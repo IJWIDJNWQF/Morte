@@ -268,9 +268,6 @@ getgenv().morte = {
                 ["MaxDistance"] = 500
             }
         },
-        ["Mods"] = {
-            ["AntiAimViewer"] = true
-        },
         ["UI"] = {
             ["Enabled"] = true,
             ["Visible"] = false,
