@@ -1,3 +1,10 @@
+
+-- Visuals Only -- Put IDS
+getgenv().AccessoryIDs = {
+    6714486677,8923152393,15320177437,16560243838,14488197116,17071910502,97046490971756 -- Visuals Only -- Put IDS
+}
+-- Visuals Only -- Put IDS
+
 getgenv().morte = {
     ["Key"] = "",
     ["Combat"] = {
@@ -77,7 +84,7 @@ getgenv().morte = {
             ["VisibilityCheck"] = false,
             ["KnockCheck"] = false,
             ["KnifeCheck"] = {
-                ["Enabled"] = true,
+                ["Enabled"] = false,
                 ["IgnoreKnife"] = true
             },
             ["HealthCheck"] = {
@@ -263,25 +270,7 @@ getgenv().morte = {
         }
     },
     ["Settings"] = {
-        -- ["SwitchAimMode"] = Enum.KeyCode.T,
-        -- ["SwitchHitpart"] = Enum.KeyCode.Y,
-        ["SwitchSilentMode"] = Enum.KeyCode.G,
-        -- ["LockMouseTarget"] = Enum.KeyCode.G,
-        -- ["AdjustTracerTransparency"] = Enum.KeyCode.J, -- NEW: Key to adjust tracer transparency
-        -- ["AdjustLockOnlyFOV"] = Enum.KeyCode.L, -- NEW: Key to adjust LockOnly FOV
-        -- ["ChangeLockOnlyFOVColor"] = Enum.KeyCode.O, -- NEW: Key to change LockOnly FOV color
-        -- ["AdjustSilentAimFOV"] = Enum.KeyCode.I, -- NEW: Key to adjust Silent Aim FOV
-        -- ["ChangeSilentAimFOVColor"] = Enum.KeyCode.U, -- NEW: Key to change Silent Aim FOV color
-        -- ["AdjustAimbotFOV"] = Enum.KeyCode.Y, -- NEW: Key to adjust Aimbot FOV
-        -- ["ChangeAimbotFOVColor"] = Enum.KeyCode.T, -- NEW: Key to change Aimbot FOV color
-        -- ["HybridMode"] = Enum.KeyCode.R, -- NEW: Toggle hybrid mode (both aiming systems together)
-        -- ["ToggleAimbotFOVSettings"] = Enum.KeyCode.F1, -- NEW: Toggle Aimbot FOV settings UI
-        -- ["ToggleSilentAimFOVSettings"] = Enum.KeyCode.F2, -- NEW: Toggle Silent Aim FOV settings UI
-        -- ["ToggleLockOnlyFOVSettings"] = Enum.KeyCode.F3, -- NEW: Toggle LockOnly FOV settings UI
-        -- ["ToggleShake"] = Enum.KeyCode.N, -- NEW: Toggle Aimbot Shake
-        -- ["ToggleVisualHitbox"] = Enum.KeyCode.V, -- NEW: Toggle Visual Hitbox
-        -- ["AdjustHitboxExtendX"] = Enum.KeyCode.Comma, -- NEW: Adjust Hitbox Extend X
-        -- ["AdjustHitboxExtendY"] = Enum.KeyCode.Period -- NEW: Adjust Hitbox Extend Y
+        ["SwitchSilentMode"] = Enum.KeyCode.G
     }
 }
 
