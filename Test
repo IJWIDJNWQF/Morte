@@ -1,0 +1,4129 @@
+-- BYPASS SYSTEM - Must run first
+local bypassComplete = false
+local bypassThread = coroutine.create(function()
+    -- Wait for game to load
+    repeat wait() until game:IsLoaded()
+    
+    -- print("🔒 Starting Bypass System...")
+    
+    -- Adonis Bypass with Error Handling
+    local success, err = pcall(function()
+        local g = getinfo or debug.getinfo
+        local d = false
+        local h = {}
+        
+        local x, y
+        
+        -- Try to set thread identity safely
+        pcall(function() setthreadidentity(2) end)
+        
+        for i, v in getgc(true) do
+            if typeof(v) == "table" then
+                local a = rawget(v, "Detected")
+                local b = rawget(v, "Kill")
+            
+                if typeof(a) == "function" and not x then
+                    x = a
+                    
+                    local o; o = hookfunction(a, function(c, f, n)
+                        if c ~= "_" then
+                            if d then
+                                warn(`Adonis AntiCheat flagged\nMethod: {c}\nInfo: {f}`)
+                            end
+                        end
+                        
+                        return true
+                    end)
+
+                    table.insert(h, a)
+                end
+
+                if rawget(v, "Variables") and rawget(v, "Process") and typeof(b) == "function" and not y then
+                    y = b
+                    local o; o = hookfunction(b, function(f)
+                        if d then
+                            warn(`Adonis AntiCheat tried to kill (fallback): {f}`)
+                        end
+                    end)
+
+                    table.insert(h, b)
+                end
+            end
+        end
+
+        -- Safely hook debug.info
+        pcall(function()
+            local originalDebugInfo = getrenv().debug.info
+            hookfunction(getrenv().debug.info, newcclosure(function(...)
+                local a, f = ...
+
+                if x and a == x then
+                    if d then
+                        warn(`zins | adonis bypassed`)
+                    end
+
+                    return coroutine.yield(coroutine.running())
+                end
+                
+                return originalDebugInfo(...)
+            end))
+        end)
+
+        pcall(function() setthreadidentity(7) end)
+
+        wait(1)
+
+        -- Additional bypass with error handling
+        pcall(function()
+            for k,v in pairs(getgc(true)) do 
+                if pcall(function() return rawget(v,"indexInstance") end) and type(rawget(v,"indexInstance")) == "table" and (rawget(v,"indexInstance"))[1] == "kick" then 
+                    v.tvk = {"kick",function() return game.Workspace:WaitForChild("") end} 
+                end 
+            end
+        end)
+    end)
+    
+    if not success then
+        warn("⚠️ Bypass encountered an error: " .. tostring(err))
+        warn("⚠️ Continuing with limited bypass protection...")
+    end
+    
+    -- Alternative bypass methods
+    pcall(function()
+        -- Hook kick function
+        local oldKick = game.Players.LocalPlayer.Kick
+        game.Players.LocalPlayer.Kick = function() 
+            warn("🛡️ Kick blocked!")
+            return 
+        end
+    end)
+    
+    pcall(function()
+        -- Hook teleport function
+        local oldTeleport = game:GetService("TeleportService")
+        if oldTeleport then
+            local oldTeleportToPlace = oldTeleport.TeleportToPlace
+            oldTeleport.TeleportToPlace = function()
+                warn("🛡️ Teleport blocked!")
+                return
+            end
+        end
+    end)
+    
+    -- print("Morte-Bypass-Done")
+    bypassComplete = true
+end)
+
+-- Start bypass thread
+coroutine.resume(bypassThread)
+
+-- Wait for bypass to complete (with timeout)
+local timeout = 10
+local startTime = tick()
+repeat 
+    wait(0.1) 
+    if tick() - startTime > timeout then
+        warn("⚠️ Bypass timeout - continuing anyway...")
+        bypassComplete = true
+        break
+    end
+until bypassComplete
+
+-- Now continue with the main script
+-- print("✅ Bypass Complete - Loading Main Script...")
+
+local config = getgenv().morte or {}
+
+-- ตรวจสอบว่า config โหลดถูกต้อง
+if not config["Combat"] then
+    warn("❌ Config not loaded properly! Check if getgenv().morte exists")
+    return
+end
+
+-- Prevent duplicate execution
+if _G.AimlockRunning then
+    -- print("⚠️ Script is already running! Cleaning up previous instance...")
+    if _G.AimlockCleanup then
+        _G.AimlockCleanup()
+        wait(1)
+    end
+    
+    -- Clear all global variables
+    for k, v in pairs(getgenv()) do
+        if string.find(tostring(k), "Silent") or string.find(tostring(k), "Aimlock") or 
+           string.find(tostring(k), "Triggerbot") or string.find(tostring(k), "FOV") then
+            getgenv()[k] = nil
+        end
+    end
+    wait(0.5)
+end
+
+_G.AimlockRunning = true
+
+-- Wait for game properly
+repeat wait() until game:IsLoaded()
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+repeat wait() until LocalPlayer and LocalPlayer.Character
+
+-- Variables
+local target = nil
+local connections = {}
+local currentAimMode = getgenv().morte["Combat"]["Aimlock"]["AimMode"]
+local currentSilentMode = getgenv().morte["Combat"]["SilentAim"]["SilentMode"]
+local aimbotFovCircle = nil -- Aimbot FOV Circle
+local silentAimFovCircle = nil -- Silent Aim FOV Circle
+local lockOnlyFovCircle = nil -- LockOnly FOV Circle
+local tracerLine = nil
+local targetText = nil
+local modeText = nil
+local humanizeOffset = Vector2.new(0, 0)
+local stickyLockedTarget = nil
+local silentAimTarget = nil
+local silentAimLockedTarget = nil
+local orbitAngle = 0
+local orbitConnection = nil
+local originalWalkSpeed = 16
+local originalJumpPower = 50
+local orbitHoldingKey = false
+local spectateConnection = nil
+local originalCameraType = Camera.CameraType
+local originalCameraSubject = Camera.CameraSubject
+
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+getgenv().Time = 0.5
+
+local function weldParts(part0, part1, c0, c1)
+    local weld = Instance.new("Weld")
+    weld.Part0 = part0
+    weld.Part1 = part1
+    weld.C0 = c0
+    weld.C1 = c1
+    weld.Parent = part0
+    return weld
+end
+
+local function findAttachment(rootPart, name)
+    for _, descendant in pairs(rootPart:GetDescendants()) do
+        if descendant:IsA("Attachment") and descendant.Name == name then
+            return descendant
+        end
+    end
+end
+
+local function addAccessoryToCharacter(accessoryId, character)
+    local accessory = game:GetObjects("rbxassetid://" .. tostring(accessoryId))[1]
+    
+    accessory.Parent = game.Workspace
+
+    local handle = accessory:FindFirstChild("Handle")
+    if handle then
+        handle.CanCollide = false
+        
+        -- ลองหา Head ก่อน
+        local head = character:FindFirstChild("Head")
+        if head then
+            local attachment = handle:FindFirstChildOfClass("Attachment")
+            if attachment then
+                local parentAttachment = findAttachment(head, attachment.Name)
+                if parentAttachment then
+                    weldParts(head, handle, parentAttachment.CFrame, attachment.CFrame)
+                else
+                    -- ถ้าไม่เจอ attachment ให้ weld ไปที่หัวโดยตรง
+                    weldParts(head, handle, CFrame.new(0, 0.5, 0), CFrame.new())
+                end
+            else
+                -- ถ้าไม่มี attachment ให้ weld ไปที่หัวโดยตรง
+                weldParts(head, handle, CFrame.new(0, 0.5, 0), CFrame.new())
+            end
+        else
+            -- ถ้าไม่มีหัว ให้ลองหา Torso
+            local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+            if torso then
+                weldParts(torso, handle, CFrame.new(0, 0.5, 0), CFrame.new())
+            end
+        end
+    end
+
+    accessory.Parent = character
+end
+
+local function onCharacterAdded(character)
+    wait(getgenv().Time)
+    
+    -- ลบ accessory เก่าทั้งหมดก่อน
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Accessory") then
+            child:Destroy()
+        end
+    end
+
+    -- เพิ่ม accessory ใหม่ทั้งหมด
+    for _, accessoryId in ipairs(getgenv().AccessoryIDs) do
+        if accessoryId ~= 0 then -- ข้าม ID 0
+            pcall(function()
+                addAccessoryToCharacter(accessoryId, character)
+            end)
+        end
+    end
+end
+
+-- ฟังก์ชันรีโหลด (เรียกเมื่อต้องการเปลี่ยน ID)
+getgenv().ReloadAccessories = function()
+    if game.Players.LocalPlayer.Character then
+        onCharacterAdded(game.Players.LocalPlayer.Character)
+    end
+end
+
+-- ตั้งค่า event
+game.Players.LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- รันครั้งแรก
+if game.Players.LocalPlayer.Character then
+    onCharacterAdded(game.Players.LocalPlayer.Character)
+end
+
+
+
+-- NEW: Hybrid mode variables - DISABLED
+local hybridMode = false -- DISABLED: Hybrid mode
+local hybridTarget = nil -- DISABLED: Shared target for both systems
+
+-- NEW: FOV Settings UI variables
+local aimbotFovSettingsFrame = nil
+local silentAimFovSettingsFrame = nil
+local lockOnlyFovSettingsFrame = nil
+
+-- NEW: Visual Hitbox variables
+local visualHitboxes = {} -- Table to store all visual hitbox drawings
+
+-- NEW: ESP Variables - FIXED: Added proper initialization
+local espDrawings = {} -- Table to store all ESP drawings
+local espBoxes = {} -- Table to store ESP box drawings
+local espTexts = {} -- Table to store ESP text drawings
+local espLines = {} -- Table to store ESP line drawings
+
+-- Triggerbot Variables
+local triggerbotClicked = false
+local triggerbotDelay = 0
+local triggerbotTimer = 0
+local triggerbotLockedTarget = nil
+
+-- UI Variables
+local ScreenGui = nil
+local MainFrame = nil
+local TracerColorFrame = nil
+local AimbotFOVColorFrame = nil
+local SilentAimFOVColorFrame = nil
+local LockOnlyFOVColorFrame = nil
+local UIEnabled = true
+
+-- Mouse object for Silent Aim and Triggerbot
+local Mouse = LocalPlayer:GetMouse()
+
+-- Store original values
+if LocalPlayer.Character then
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        originalWalkSpeed = humanoid.WalkSpeed
+        originalJumpPower = humanoid.JumpPower
+    end
+end
+
+-- Weapon checking function
+local function IsWeaponWhitelisted(weaponName, aimType)
+    if aimType == "Aimlock" and not config["Combat"]["Aimlock"]["Whitelisted"]["Enabled"] then
+        return true
+    end
+    
+    if aimType == "SilentAim" and not config["Combat"]["SilentAim"]["Whitelisted"]["Enabled"] then
+        return true
+    end
+    
+    if aimType == "Triggerbot" and not config["Combat"]["Triggerbot"]["Delays"]["Enabled"] then
+        return true
+    end
+    
+    if not weaponName then return false end
+    
+    local whitelist = nil
+    if aimType == "Aimlock" then
+        whitelist = config["Combat"]["Aimlock"]["Whitelisted"]["Weapons"]
+    elseif aimType == "SilentAim" then
+        whitelist = config["Combat"]["SilentAim"]["Whitelisted"]["Weapons"]
+    elseif aimType == "Triggerbot" then
+        whitelist = config["Combat"]["Triggerbot"]["Delays"]["Guns"]
+    end
+    
+    if whitelist then
+        for name, enabled in pairs(whitelist) do
+            if enabled and weaponName == name then
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Get current weapon function
+local function GetCurrentWeapon()
+    if not LocalPlayer.Character then return nil end
+    
+    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+    if tool then
+        return tool.Name
+    end
+    
+    return nil
+end
+
+-- Get weapon delay for triggerbot
+local function GetWeaponDelay(weaponName)
+    if not config["Combat"]["Triggerbot"]["Delays"]["Enabled"] then
+        return config["Combat"]["Triggerbot"]["Delay"]
+    end
+    
+    if not weaponName then return config["Combat"]["Triggerbot"]["Delay"] end
+    
+    local delays = config["Combat"]["Triggerbot"]["Delays"]["Guns"]
+    if delays then
+        for name, delay in pairs(delays) do
+            if weaponName == name then
+                return delay
+            end
+        end
+    end
+    
+    return config["Combat"]["Triggerbot"]["Delay"]
+end
+
+local function IsHoldingKnife()
+    if not LocalPlayer.Character then return false end
+    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+    return tool and tool.Name == "[Knife]"
+end
+
+-- FIXED: Global Knock Check System
+local function IsPlayerKnocked(player)
+    if not player or not player.Character then return true end
+    
+    local character = player.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if not humanoid or humanoid.Health <= 0 then
+        return true
+    end
+    
+    local bodyEffects = character:FindFirstChild("BodyEffects")
+    if bodyEffects then
+        local knocked = bodyEffects:FindFirstChild("K.O")
+        local dead = bodyEffects:FindFirstChild("Dead")
+        
+        if knocked and knocked.Value then
+            return true
+        end
+        if dead and dead.Value then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- NEW: Health Check System
+local function IsPlayerHealthy(player)
+    if not config["Combat"]["Checks"]["HealthCheck"]["Enabled"] then
+        return true
+    end
+    
+    if not player or not player.Character then return false end
+    
+    local character = player.Character
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if not humanoid then return false end
+    
+    return humanoid.Health >= config["Combat"]["Checks"]["HealthCheck"]["MinHealth"]
+end
+
+-- Simple functions
+local function IsEnemy(player)
+    if not config["Combat"]["Checks"]["TeamCheck"] then return true end
+    if not LocalPlayer.Team or not player.Team then return true end
+    return LocalPlayer.Team ~= player.Team
+end
+
+local function IsAlive(player)
+    if not player.Character then return false end
+    
+    if config["Combat"]["Checks"]["KnockCheck"] then
+        return not IsPlayerKnocked(player)
+    else
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if not humanoid then return false end
+        return humanoid.Health > 0
+    end
+end
+
+local function IsValidTarget(player)
+    -- ตรวจสอบว่า player ยังอยู่ในเกม
+    if not Players:FindFirstChild(player.Name) then
+        return false
+    end
+    
+    if player == LocalPlayer then return false end
+    if not player.Character then return false end
+    if not IsEnemy(player) then return false end
+    if not IsAlive(player) then return false end
+    
+    -- NEW: Health Check
+    if config["Combat"]["Checks"]["HealthCheck"]["Enabled"] and not IsPlayerHealthy(player) then
+        return false
+    end
+    
+    local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    local head = player.Character:FindFirstChild("Head")
+    if not humanoidRootPart or not head then return false end
+    
+    return true
+end
+
+-- NEW: Create visual hitbox for a player
+local function CreateVisualHitbox(player)
+    if not config["Combat"]["Hitbox"]["Enabled"] or not config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+        return
+    end
+    
+    if not player or not player.Character then return end
+    
+    -- Clean up existing hitbox for this player
+    if visualHitboxes[player] then
+        for _, drawing in pairs(visualHitboxes[player]) do
+            if drawing then
+                pcall(function() drawing:Remove() end)
+            end
+        end
+        visualHitboxes[player] = nil
+    end
+    
+    -- Create new hitbox drawings
+    visualHitboxes[player] = {}
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Get hitbox extend values
+    local extendX = config["Combat"]["Hitbox"]["Extend"]["X"]
+    local extendY = config["Combat"]["Hitbox"]["Extend"]["Y"]
+    
+    -- Create box corners
+    local corners = {
+        Vector3.new(-extendX, -extendY, -extendX),
+        Vector3.new(extendX, -extendY, -extendX),
+        Vector3.new(extendX, extendY, -extendX),
+        Vector3.new(-extendX, extendY, -extendX),
+        Vector3.new(-extendX, -extendY, extendX),
+        Vector3.new(extendX, -extendY, extendX),
+        Vector3.new(extendX, extendY, extendX),
+        Vector3.new(-extendX, extendY, extendX)
+    }
+    
+    -- Create lines for the box
+    local lines = {
+        {1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Back face
+        {5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Front face
+        {1, 5}, {2, 6}, {3, 7}, {4, 8}  -- Connecting lines
+    }
+    
+    -- Create line drawings
+    for _, line in pairs(lines) do
+        local lineDrawing = Drawing.new("Line")
+        lineDrawing.Color = config["Combat"]["Hitbox"]["VisualHitbox"]["Color"]
+        lineDrawing.Thickness = 1
+        lineDrawing.Transparency = 1 - config["Combat"]["Hitbox"]["VisualHitbox"]["Transparency"]
+        table.insert(visualHitboxes[player], lineDrawing)
+    end
+    
+    -- Store corners for updating
+    visualHitboxes[player].corners = corners
+    visualHitboxes[player].lines = lines
+end
+
+-- NEW: Update visual hitbox for a player
+local function UpdateVisualHitbox(player)
+    if not config["Combat"]["Hitbox"]["Enabled"] or not config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+        return
+    end
+    
+    if not player or not player.Character or not visualHitboxes[player] then return end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    local corners = visualHitboxes[player].corners
+    local lines = visualHitboxes[player].lines
+    local drawingIndex = 1
+    
+    -- Convert 3D corners to 2D screen positions
+    local screenCorners = {}
+    for _, corner in pairs(corners) do
+        local worldPos = humanoidRootPart.CFrame:PointToWorldSpace(corner)
+        local screenPos, onScreen = Camera:WorldToViewportPoint(worldPos)
+        table.insert(screenCorners, onScreen and Vector2.new(screenPos.X, screenPos.Y) or nil)
+    end
+    
+    -- Update line drawings
+    for _, line in pairs(lines) do
+        local fromCorner = screenCorners[line[1]]
+        local toCorner = screenCorners[line[2]]
+        
+        if fromCorner and toCorner then
+            local lineDrawing = visualHitboxes[player][drawingIndex]
+            lineDrawing.From = fromCorner
+            lineDrawing.To = toCorner
+            lineDrawing.Visible = true
+        else
+            local lineDrawing = visualHitboxes[player][drawingIndex]
+            lineDrawing.Visible = false
+        end
+        
+        drawingIndex = drawingIndex + 1
+    end
+end
+
+-- NEW: Remove visual hitbox for a player
+local function RemoveVisualHitbox(player)
+    if not visualHitboxes[player] then return end
+    
+    for _, drawing in pairs(visualHitboxes[player]) do
+        if drawing then
+            pcall(function() drawing:Remove() end)
+        end
+    end
+    
+    visualHitboxes[player] = nil
+end
+
+-- FIXED: Update all visual hitboxes - Only show for valid targets
+local function UpdateAllVisualHitboxes()
+    if not config["Combat"]["Hitbox"]["Enabled"] or not config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+        -- Remove all hitboxes if disabled
+        for player, _ in pairs(visualHitboxes) do
+            RemoveVisualHitbox(player)
+        end
+        return
+    end
+    
+    -- Update hitboxes for all valid targets only
+    for _, player in pairs(Players:GetPlayers()) do
+        if IsValidTarget(player) then
+            if not visualHitboxes[player] then
+                CreateVisualHitbox(player)
+            end
+            UpdateVisualHitbox(player)
+        else
+            if visualHitboxes[player] then
+                RemoveVisualHitbox(player)
+            end
+        end
+    end
+end
+
+-- NEW: Create ESP elements for a player - FIXED: Proper cleanup and recreation
+local function CreateESP(player)
+    if not config["Visuals"]["ESP"]["Enabled"] then return end
+    
+    if not player or not player.Character then return end
+    
+    -- Clean up existing ESP for this player
+    if espDrawings[player] then
+        for _, drawing in pairs(espDrawings[player]) do
+            if drawing then
+                pcall(function() drawing:Remove() end)
+            end
+        end
+        espDrawings[player] = nil
+    end
+    
+    -- Create new ESP drawings
+    espDrawings[player] = {}
+    
+    -- Create ESP Box
+    if config["Visuals"]["ESP"]["ESPBox"]["Enabled"] then
+        local espType = config["Visuals"]["ESP"]["ESPBox"]["Type"]
+        
+        if espType == "2D" then
+            local box = Drawing.new("Square")
+            box.Color = config["Visuals"]["ESP"]["ESPBox"]["Color"]
+            box.Thickness = config["Visuals"]["ESP"]["ESPBox"]["Thickness"]
+            box.Transparency = 1 - config["Visuals"]["ESP"]["ESPBox"]["Transparency"]
+            box.Filled = config["Visuals"]["ESP"]["ESPBox"]["Filled"]
+            table.insert(espDrawings[player], box)
+        elseif espType == "3D" then
+            -- Create 3D box with lines
+            for i = 1, 12 do
+                local line = Drawing.new("Line")
+                line.Color = config["Visuals"]["ESP"]["ESPBox"]["Color"]
+                line.Thickness = config["Visuals"]["ESP"]["ESPBox"]["Thickness"]
+                line.Transparency = 1 - config["Visuals"]["ESP"]["ESPBox"]["Transparency"]
+                table.insert(espDrawings[player], line)
+            end
+        elseif espType == "Corner" then
+            -- Create corner box with lines
+            for i = 1, 8 do
+                local line = Drawing.new("Line")
+                line.Color = config["Visuals"]["ESP"]["ESPBox"]["Color"]
+                line.Thickness = config["Visuals"]["ESP"]["ESPBox"]["Thickness"]
+                line.Transparency = 1 - config["Visuals"]["ESP"]["ESPBox"]["Transparency"]
+                table.insert(espDrawings[player], line)
+            end
+        end
+    end
+    
+    -- Create ESP Distance Text
+    if config["Visuals"]["ESP"]["ESPDistance"]["Enabled"] then
+        local distanceText = Drawing.new("Text")
+        distanceText.Color = config["Visuals"]["ESP"]["ESPDistance"]["Color"]
+        distanceText.Size = config["Visuals"]["ESP"]["ESPDistance"]["Size"]
+        distanceText.Text = ""
+        table.insert(espDrawings[player], distanceText)
+    end
+    
+    -- Create ESP Name Text
+    if config["Visuals"]["ESP"]["ESPName"]["Enabled"] then
+        local nameText = Drawing.new("Text")
+        nameText.Color = config["Visuals"]["ESP"]["ESPName"]["Color"]
+        nameText.Size = config["Visuals"]["ESP"]["ESPName"]["Size"]
+        nameText.Text = ""
+        table.insert(espDrawings[player], nameText)
+    end
+    
+    -- Create ESP Health
+    if config["Visuals"]["ESP"]["ESPHealth"]["Enabled"] then
+        local healthType = config["Visuals"]["ESP"]["ESPHealth"]["HealthType"]
+        
+        if healthType == "Text" then
+            local healthText = Drawing.new("Text")
+            healthText.Color = config["Visuals"]["ESP"]["ESPHealth"]["Color"]
+            healthText.Size = config["Visuals"]["ESP"]["ESPHealth"]["Size"]
+            healthText.Text = ""
+            table.insert(espDrawings[player], healthText)
+        elseif healthType == "Bar" then
+            local healthBarBackground = Drawing.new("Square")
+            healthBarBackground.Color = config["Visuals"]["ESP"]["ESPHealth"]["BarBackgroundColor"]
+            healthBarBackground.Filled = true
+            healthBarBackground.Size = Vector2.new(config["Visuals"]["ESP"]["ESPHealth"]["BarWidth"], config["Visuals"]["ESP"]["ESPHealth"]["BarHeight"])
+            table.insert(espDrawings[player], healthBarBackground)
+            
+            local healthBar = Drawing.new("Square")
+            healthBar.Color = config["Visuals"]["ESP"]["ESPHealth"]["BarColor"]
+            healthBar.Filled = true
+            table.insert(espDrawings[player], healthBar)
+        end
+    end
+    
+    -- Create ESP Snaplines
+    if config["Visuals"]["ESP"]["ESPSnaplines"]["Enabled"] then
+        local snapline = Drawing.new("Line")
+        snapline.Color = config["Visuals"]["ESP"]["ESPSnaplines"]["Color"]
+        snapline.Thickness = config["Visuals"]["ESP"]["ESPSnaplines"]["Thickness"]
+        snapline.Transparency = 1 - config["Visuals"]["ESP"]["ESPSnaplines"]["Transparency"]
+        table.insert(espDrawings[player], snapline)
+    end
+end
+
+-- NEW: Update ESP elements for a player
+local function UpdateESP(player)
+    if not config["Visuals"]["ESP"]["Enabled"] then return end
+    
+    if not player or not player.Character or not espDrawings[player] then return end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if not humanoidRootPart or not humanoid then return end
+    
+    -- Check distance limit
+    local distance = (humanoidRootPart.Position - Camera.CFrame.Position).Magnitude
+    if config["Visuals"]["ESP"]["LimitDistance"]["Enabled"] and distance > config["Visuals"]["ESP"]["LimitDistance"]["MaxDistance"] then
+        -- Hide all ESP elements if beyond distance limit
+        for _, drawing in pairs(espDrawings[player]) do
+            if drawing then
+                drawing.Visible = false
+            end
+        end
+        return
+    end
+    
+    -- Get screen position
+    local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+    
+    if not onScreen then
+        -- Hide all ESP elements if not on screen
+        for _, drawing in pairs(espDrawings[player]) do
+            if drawing then
+                drawing.Visible = false
+            end
+        end
+        return
+    end
+    
+    local drawingIndex = 1
+    
+    -- Update ESP Box
+    if config["Visuals"]["ESP"]["ESPBox"]["Enabled"] then
+        local espType = config["Visuals"]["ESP"]["ESPBox"]["Type"]
+        
+        if espType == "2D" then
+            -- Calculate 2D box
+            local size = Camera:WorldToViewportPoint(humanoidRootPart.Position - Vector3.new(0, 3, 0))
+            local top = Camera:WorldToViewportPoint(humanoidRootPart.Position + Vector3.new(0, 3, 0))
+            
+            local height = math.abs(top.Y - size.Y)
+            local width = height * 0.6
+            
+            local box = espDrawings[player][drawingIndex]
+            box.Position = Vector2.new(screenPos.X - width/2, top.Y)
+            box.Size = Vector2.new(width, height)
+            box.Visible = true
+            drawingIndex = drawingIndex + 1
+        elseif espType == "3D" then
+            -- Calculate 3D box corners
+            local size = Vector3.new(2, 3, 1)
+            local cf = humanoidRootPart.CFrame
+            
+            local corners = {
+                cf:PointToWorldSpace(Vector3.new(-size.X/2, -size.Y/2, -size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(size.X/2, -size.Y/2, -size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(size.X/2, size.Y/2, -size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(-size.X/2, size.Y/2, -size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(-size.X/2, -size.Y/2, size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(size.X/2, -size.Y/2, size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(size.X/2, size.Y/2, size.Z/2)),
+                cf:PointToWorldSpace(Vector3.new(-size.X/2, size.Y/2, size.Z/2))
+            }
+            
+            -- Convert to screen positions
+            local screenCorners = {}
+            for _, corner in pairs(corners) do
+                local pos, visible = Camera:WorldToViewportPoint(corner)
+                table.insert(screenCorners, visible and Vector2.new(pos.X, pos.Y) or nil)
+            end
+            
+            -- Draw lines for 3D box
+            local lines = {
+                {1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Back face
+                {5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Front face
+                {1, 5}, {2, 6}, {3, 7}, {4, 8}  -- Connecting lines
+            }
+            
+            for _, line in pairs(lines) do
+                local fromCorner = screenCorners[line[1]]
+                local toCorner = screenCorners[line[2]]
+                
+                local lineDrawing = espDrawings[player][drawingIndex]
+                if fromCorner and toCorner then
+                    lineDrawing.From = fromCorner
+                    lineDrawing.To = toCorner
+                    lineDrawing.Visible = true
+                else
+                    lineDrawing.Visible = false
+                end
+                drawingIndex = drawingIndex + 1
+            end
+        elseif espType == "Corner" then
+            -- Calculate corner box
+            local size = Camera:WorldToViewportPoint(humanoidRootPart.Position - Vector3.new(0, 3, 0))
+            local top = Camera:WorldToViewportPoint(humanoidRootPart.Position + Vector3.new(0, 3, 0))
+            
+            local height = math.abs(top.Y - size.Y)
+            local width = height * 0.6
+            local cornerLength = math.min(width, height) * 0.3
+            
+            local left = screenPos.X - width/2
+            local right = screenPos.X + width/2
+            local topY = top.Y
+            local bottomY = size.Y
+            
+            -- Draw corner lines
+            local corners = {
+                {Vector2.new(left, topY), Vector2.new(left + cornerLength, topY)}, -- Top left
+                {Vector2.new(left, topY), Vector2.new(left, topY + cornerLength)}, -- Top left
+                {Vector2.new(right, topY), Vector2.new(right - cornerLength, topY)}, -- Top right
+                {Vector2.new(right, topY), Vector2.new(right, topY + cornerLength)}, -- Top right
+                {Vector2.new(left, bottomY), Vector2.new(left + cornerLength, bottomY)}, -- Bottom left
+                {Vector2.new(left, bottomY), Vector2.new(left, bottomY - cornerLength)}, -- Bottom left
+                {Vector2.new(right, bottomY), Vector2.new(right - cornerLength, bottomY)}, -- Bottom right
+                {Vector2.new(right, bottomY), Vector2.new(right, bottomY - cornerLength)} -- Bottom right
+            }
+            
+            for _, corner in pairs(corners) do
+                local lineDrawing = espDrawings[player][drawingIndex]
+                lineDrawing.From = corner[1]
+                lineDrawing.To = corner[2]
+                lineDrawing.Visible = true
+                drawingIndex = drawingIndex + 1
+            end
+        end
+    end
+    
+    -- Update ESP Distance Text
+    if config["Visuals"]["ESP"]["ESPDistance"]["Enabled"] then
+        local distanceText = espDrawings[player][drawingIndex]
+        distanceText.Text = string.format("%.0f studs", distance)
+        
+        local position = Vector2.new(screenPos.X, screenPos.Y)
+        local offset = 15
+        
+        if config["Visuals"]["ESP"]["ESPDistance"]["Position"] == "Top" then
+            position = Vector2.new(screenPos.X, screenPos.Y - offset)
+        elseif config["Visuals"]["ESP"]["ESPDistance"]["Position"] == "Bottom" then
+            position = Vector2.new(screenPos.X, screenPos.Y + offset)
+        elseif config["Visuals"]["ESP"]["ESPDistance"]["Position"] == "Left" then
+            position = Vector2.new(screenPos.X - offset, screenPos.Y)
+        elseif config["Visuals"]["ESP"]["ESPDistance"]["Position"] == "Right" then
+            position = Vector2.new(screenPos.X + offset, screenPos.Y)
+        end
+        
+        distanceText.Position = position
+        distanceText.Visible = true
+        drawingIndex = drawingIndex + 1
+    end
+    
+    -- Update ESP Name Text
+    -- Update ESP Name Text
+if config["Visuals"]["ESP"]["ESPName"]["Enabled"] then
+    local nameText = espDrawings[player][drawingIndex]
+    
+    -- ใหม่: ใช้ DisplayName ถ้าเปิด, ไม่ใช่ใช้ชื่อจริง
+    if config["Visuals"]["ESP"]["ESPName"]["DisplayName"] then
+        nameText.Text = player.DisplayName
+    else
+        nameText.Text = player.Name
+    end
+    
+    local position = Vector2.new(screenPos.X, screenPos.Y)
+    local offset = 30
+    
+    if config["Visuals"]["ESP"]["ESPName"]["Position"] == "Top" then
+        position = Vector2.new(screenPos.X, screenPos.Y - offset)
+    elseif config["Visuals"]["ESP"]["ESPName"]["Position"] == "Bottom" then
+        position = Vector2.new(screenPos.X, screenPos.Y + offset)
+    elseif config["Visuals"]["ESP"]["ESPName"]["Position"] == "Left" then
+        position = Vector2.new(screenPos.X - offset, screenPos.Y)
+    elseif config["Visuals"]["ESP"]["ESPName"]["Position"] == "Right" then
+        position = Vector2.new(screenPos.X + offset, screenPos.Y)
+    end
+    
+    nameText.Position = position
+    nameText.Visible = true
+    drawingIndex = drawingIndex + 1
+end
+    
+    -- Update ESP Health
+    if config["Visuals"]["ESP"]["ESPHealth"]["Enabled"] then
+        local healthType = config["Visuals"]["ESP"]["ESPHealth"]["HealthType"]
+        
+        if healthType == "Text" then
+            local healthText = espDrawings[player][drawingIndex]
+            healthText.Text = string.format("HP: %.0f", humanoid.Health)
+            
+            local position = Vector2.new(screenPos.X, screenPos.Y)
+            local offset = 45
+            
+            if config["Visuals"]["ESP"]["ESPHealth"]["Position"] == "Top" then
+                position = Vector2.new(screenPos.X, screenPos.Y - offset)
+            elseif config["Visuals"]["ESP"]["ESPHealth"]["Position"] == "Bottom" then
+                position = Vector2.new(screenPos.X, screenPos.Y + offset)
+            elseif config["Visuals"]["ESP"]["ESPHealth"]["Position"] == "Left" then
+                position = Vector2.new(screenPos.X - offset, screenPos.Y)
+            elseif config["Visuals"]["ESP"]["ESPHealth"]["Position"] == "Right" then
+                position = Vector2.new(screenPos.X + offset, screenPos.Y)
+            end
+            
+            healthText.Position = position
+            healthText.Visible = true
+            drawingIndex = drawingIndex + 1
+        elseif healthType == "Bar" then
+            local healthBarBackground = espDrawings[player][drawingIndex]
+            local healthBar = espDrawings[player][drawingIndex + 1]
+            
+            local barWidth = config["Visuals"]["ESP"]["ESPHealth"]["BarWidth"]
+            local barHeight = config["Visuals"]["ESP"]["ESPHealth"]["BarHeight"]
+            local healthPercent = math.min(humanoid.Health / humanoid.MaxHealth, 1)
+            
+            healthBarBackground.Size = Vector2.new(barWidth, barHeight)
+            healthBar.Size = Vector2.new(barWidth * healthPercent, barHeight)
+            
+            local position = Vector2.new(screenPos.X - barWidth/2, screenPos.Y + 15)
+            
+            healthBarBackground.Position = position
+            healthBar.Position = position
+            
+            healthBarBackground.Visible = true
+            healthBar.Visible = true
+            
+            drawingIndex = drawingIndex + 2
+        end
+    end
+    
+    -- Update ESP Snaplines
+    if config["Visuals"]["ESP"]["ESPSnaplines"]["Enabled"] then
+        local snapline = espDrawings[player][drawingIndex]
+        
+        local origin = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+        
+        if config["Visuals"]["ESP"]["ESPSnaplines"]["Origin"] == "Center" then
+            origin = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        elseif config["Visuals"]["ESP"]["ESPSnaplines"]["Origin"] == "Top" then
+            origin = Vector2.new(Camera.ViewportSize.X/2, 0)
+        end
+        
+        snapline.From = origin
+        snapline.To = Vector2.new(screenPos.X, screenPos.Y)
+        snapline.Visible = true
+    end
+end
+
+-- NEW: Remove ESP elements for a player - FIXED: Proper cleanup
+local function RemoveESP(player)
+    if not espDrawings[player] then return end
+    
+    for _, drawing in pairs(espDrawings[player]) do
+        if drawing then
+            pcall(function() 
+                drawing.Visible = false
+                drawing:Remove() 
+            end)
+        end
+    end
+    
+    espDrawings[player] = nil
+end
+
+-- FIXED: Update all ESP elements - Only show for valid targets
+local function UpdateAllESP()
+    if not config["Visuals"]["ESP"]["Enabled"] then
+        -- Remove all ESP if disabled
+        for player, _ in pairs(espDrawings) do
+            RemoveESP(player)
+        end
+        return
+    end
+    
+    -- Update ESP for all valid targets only
+    for _, player in pairs(Players:GetPlayers()) do
+        if IsValidTarget(player) then
+            if not espDrawings[player] then
+                CreateESP(player)
+            end
+            UpdateESP(player)
+        else
+            if espDrawings[player] then
+                RemoveESP(player)
+            end
+        end
+    end
+end
+
+-- NEW: Player removal handler for ESP and Visual Hitbox - FIXED: Proper cleanup
+connections.playerRemoving = Players.PlayerRemoving:Connect(function(player)
+    -- Clean up ESP for leaving player
+    if espDrawings[player] then
+        RemoveESP(player)
+    end
+    
+    -- Clean up visual hitbox for leaving player
+    if visualHitboxes[player] then
+        RemoveVisualHitbox(player)
+    end
+    
+    -- Clear targets if they were the leaving player
+    if target == player then
+        target = nil
+        stickyLockedTarget = nil
+        -- print("Aimlock: Target left game - Unlocked")
+    end
+    
+    if silentAimLockedTarget == player then
+        silentAimLockedTarget = nil
+        SilentAim.LockedTarget = nil
+        -- print("Silent Aim LockOnly: Target left game - Unlocked")
+    end
+    
+    if triggerbotLockedTarget == player then
+        triggerbotLockedTarget = nil
+        -- print("Triggerbot: Target left game - Unlocked")
+    end
+    
+    if config["Movement"]["Orbit"]["Target"] == player then
+        config["Movement"]["Orbit"]["Target"] = nil
+        config["Movement"]["Orbit"]["Active"] = false
+        -- print("Orbit: Target left game - Stopped")
+    end
+    
+    if config["Movement"]["Spectate"]["Target"] == player then
+        config["Movement"]["Spectate"]["Target"] = nil
+        config["Movement"]["Spectate"]["Active"] = false
+        -- Restore camera
+        Camera.CameraType = originalCameraType
+        Camera.CameraSubject = originalCameraSubject
+        -- print("Spectate: Target left game - Stopped")
+    end
+end)
+
+-- COMPLETELY REWRITTEN SILENT AIM SYSTEM WITH LOCKONLY
+local SilentAim = {
+    Enabled = true,
+    Active = false,
+    Mode = "FOV",
+    TargetPart = "HumanoidRootPart",
+    Prediction = Vector3.new(0.18, 0.18, 0.18),
+    FOVRadius = 200,
+    LockedTarget = nil
+}
+
+-- Function to get closest target for Silent Aim
+local function GetClosestForSilent()
+    if not SilentAim.Enabled or not SilentAim.Active then
+        return nil
+    end
+    
+    -- Check if current weapon is whitelisted (only if whitelist is enabled)
+    local currentWeapon = GetCurrentWeapon()
+    if not IsWeaponWhitelisted(currentWeapon, "SilentAim") then
+        return nil
+    end
+    
+    -- LockOnly mode - use locked target
+    if SilentAim.Mode == "LockOnly" then
+        if SilentAim.LockedTarget then
+            if IsValidTarget(SilentAim.LockedTarget) and not (config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(SilentAim.LockedTarget)) then
+                return SilentAim.LockedTarget
+            else
+                SilentAim.LockedTarget = nil
+                silentAimLockedTarget = nil
+                -- print("Silent Aim LockOnly: Target unlocked (invalid/knocked)")
+            end
+        end
+        return nil
+    else
+        -- FOV mode - find closest target in FOV
+        local closest = nil
+        local closestDist = SilentAim.FOVRadius
+        local mousePos = UserInputService:GetMouseLocation()
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local targetPart = player.Character:FindFirstChild(SilentAim.TargetPart)
+                if targetPart then
+                    if config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(player) then
+                        continue
+                    end
+                    
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                    if onScreen then
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        if distance < closestDist then
+                            closestDist = distance
+                            closest = player
+                        end
+                    end
+                end
+            end
+        end
+        return closest
+    end
+end
+
+-- FIXED: Get player under mouse ที่ทำงานได้แม้มีกำแพงกั้น
+local function GetPlayerUnderMouse()
+    -- Method 1: Raycast ผ่านกำแพง
+    local mousePos = UserInputService:GetMouseLocation()
+    local viewportSize = Camera.ViewportSize
+    
+    -- สร้าง Ray จากกล้องผ่านตำแหน่งเมาส์
+    local ray = Camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+    local rayDirection = ray.Direction * 1000 -- ระยะทางไกล
+    
+    -- Raycast params ที่ไม่สนใจกำแพง
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
+    raycastParams.FilterDescendantsInstances = {}
+    
+    -- เพิ่มตัวละครของผู้เล่นทั้งหมดใน whitelist
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            table.insert(raycastParams.FilterDescendantsInstances, player.Character)
+        end
+    end
+    
+    -- ถ้าไม่มี player อื่น ให้ใช้ Blacklist แทน
+    if #raycastParams.FilterDescendantsInstances == 0 then
+        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+        raycastParams.FilterDescendantsInstances = {workspace.Terrain, LocalPlayer.Character}
+    end
+    
+    local raycastResult = workspace:Raycast(ray.Origin, rayDirection, raycastParams)
+    
+    if raycastResult and raycastResult.Instance then
+        -- หา player จาก part ที่ถูกชน
+        local hitPart = raycastResult.Instance
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                if hitPart:IsDescendantOf(player.Character) then
+                    if IsValidTarget(player) then
+                        return player
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Method 2: ตรวจสอบตำแหน่งบนหน้าจอ (fallback)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                if onScreen then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    
+                    -- ใช้ FOV กว้างๆ สำหรับการเลือก
+                    if distance < 50 then -- 50 pixels radius
+                        if IsValidTarget(player) then
+                            return player
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- IMPROVED: Get player in direction of mouse for LockOnly
+local function GetPlayerInMouseDirection()
+    local mousePos = UserInputService:GetMouseLocation()
+    local viewportSize = Camera.ViewportSize
+    local ray = Camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+    
+    local closest = nil
+    local closestDist = math.huge
+    local maxDistance = 1000 -- Increased distance
+    local angleThreshold = 0.3 -- Lowered threshold for easier locking
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player == LocalPlayer or not player.Character then continue end
+        
+        local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then continue end
+        
+        if config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(player) then continue end
+        
+        -- Check if player is in general direction of mouse
+        local direction = (humanoidRootPart.Position - Camera.CFrame.Position).Unit
+        local dotProduct = direction:Dot(ray.Direction)
+        
+        -- More forgiving check for player alignment
+        if dotProduct > angleThreshold then
+            local distance = (humanoidRootPart.Position - Camera.CFrame.Position).Magnitude
+            if distance < maxDistance and distance < closestDist then
+                closestDist = distance
+                closest = player
+            end
+        end
+    end
+    
+    return closest
+end
+
+-- Setup Mouse.Hit hook for Silent Aim
+local function SetupMouseHitHook()
+    local mt = getrawmetatable(game)
+    if mt then
+        setreadonly(mt, false)
+        local oldIndex = mt.__index
+        
+        mt.__index = newcclosure(function(self, key)
+            if self == Mouse and key == "Hit" and SilentAim.Enabled and SilentAim.Active then
+                local target = GetClosestForSilent()
+                if target and target.Character then
+                    local targetPart = target.Character:FindFirstChild(SilentAim.TargetPart)
+                    if targetPart then
+                        return targetPart.CFrame + (targetPart.Velocity * SilentAim.Prediction)
+                    end
+                end
+            end
+            return oldIndex(self, key)
+        end)
+        
+        setreadonly(mt, true)
+    end
+end
+
+-- Initialize Silent Aim
+local function InitializeSilentAim()
+    SilentAim.Enabled = config["Combat"]["SilentAim"]["Enabled"]
+    SilentAim.Active = config["Combat"]["SilentAim"]["Active"]
+    SilentAim.Mode = currentSilentMode
+    SilentAim.TargetPart = config["Combat"]["SilentAim"]["HitPart"]
+    SilentAim.Prediction = config["Combat"]["SilentAim"]["Prediction"]
+    SilentAim.FOVRadius = config["Combat"]["SilentAim"]["FOVRadius"]
+    SilentAim.LockedTarget = silentAimLockedTarget
+    
+    SetupMouseHitHook()
+    
+    -- print("Silent Aim: Initialized - Mode: " .. SilentAim.Mode)
+    -- print("Silent Aim: Status - " .. (SilentAim.Active and "ON" or "OFF"))
+    -- print("Silent Aim: HitPart - " .. SilentAim.TargetPart)
+    -- print("Silent Aim: Prediction - " .. tostring(SilentAim.Prediction))
+end
+
+-- FIXED: UpdateSilentAim function
+-- 修改 UpdateSilentAim 函数
+local function UpdateSilentAim()
+    SilentAim.Enabled = config["Combat"]["SilentAim"]["Enabled"]
+    SilentAim.Active = config["Combat"]["SilentAim"]["Active"]
+    SilentAim.Mode = currentSilentMode
+    SilentAim.TargetPart = config["Combat"]["SilentAim"]["HitPart"]
+    SilentAim.Prediction = config["Combat"]["SilentAim"]["Prediction"]
+    SilentAim.FOVRadius = config["Combat"]["SilentAim"]["FOVRadius"]
+    SilentAim.LockedTarget = silentAimLockedTarget
+    
+    -- NEW: ตรวจสอบ Knife Check ที่นี่ด้วย
+    local holdingKnife = config["Combat"]["Checks"]["KnifeCheck"]["Enabled"] and 
+                        config["Combat"]["Checks"]["KnifeCheck"]["IgnoreKnife"] and 
+                        IsHoldingKnife()
+    
+    -- ถ้าถือมีด ให้ปิด Silent Aim ทั้งหมด
+    if holdingKnife then
+        -- บันทึกสถานะก่อนปิด
+        if SilentAim.Active then
+            _G.SilentAimWasActive = true
+        end
+        
+        -- ปิด Silent Aim ทั้งหมด
+        SilentAim.Active = false
+        config["Combat"]["SilentAim"]["Active"] = false
+        
+        -- เคลียร์ LockOnly target
+        if silentAimLockedTarget then
+            _G.SilentAimLockedTargetBeforeKnife = silentAimLockedTarget
+        end
+        silentAimLockedTarget = nil
+        SilentAim.LockedTarget = nil
+        
+        -- ซ่อน FOV วงกลม
+        if silentAimFovCircle then
+            silentAimFovCircle.Visible = false
+        end
+        if lockOnlyFovCircle then
+            lockOnlyFovCircle.Visible = false
+        end
+        
+        return
+    end
+    
+    -- ถ้าไม่ได้ถือมีด และเคยเปิด Silent Aim ไว้ ให้เปิดใหม่
+    if _G.SilentAimWasActive then
+        SilentAim.Active = true
+        config["Combat"]["SilentAim"]["Active"] = true
+        _G.SilentAimWasActive = nil
+        
+        -- ถ้าเป็น LockOnly mode และมี target เก่า ให้กลับไป lock target เก่า
+        if currentSilentMode == "LockOnly" and _G.SilentAimLockedTargetBeforeKnife then
+            if IsValidTarget(_G.SilentAimLockedTargetBeforeKnife) then
+                silentAimLockedTarget = _G.SilentAimLockedTargetBeforeKnife
+                SilentAim.LockedTarget = _G.SilentAimLockedTargetBeforeKnife
+                -- print("Silent Aim LockOnly: Re-locked onto " .. _G.SilentAimLockedTargetBeforeKnife.Name)
+            end
+            _G.SilentAimLockedTargetBeforeKnife = nil
+        end
+    end
+    
+    -- FIXED: Reset LockOnly target when Silent Aim is turned off
+    if not SilentAim.Active and silentAimLockedTarget then
+        silentAimLockedTarget = nil
+        SilentAim.LockedTarget = nil
+        -- print("Silent Aim: Target unlocked (system off)")
+    end
+    
+    -- NEW: Auto-lock enemies in LockOnly FOV mode
+    if SilentAim.Active and SilentAim.Mode == "LockOnly" and config["Visuals"]["LockOnlyFOV"]["AutoLock"] then
+        if not silentAimLockedTarget or not IsValidTarget(silentAimLockedTarget) then
+            -- Find closest player in LockOnly FOV
+            local closest = nil
+            local closestDist = config["Combat"]["SilentAim"]["FOVRadius"]
+            local mousePos = UserInputService:GetMouseLocation()
+            
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    local targetPart = player.Character:FindFirstChild(SilentAim.TargetPart)
+                    if targetPart then
+                        if config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(player) then
+                            continue
+                        end
+                        
+                        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                        if onScreen then
+                            local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                            if distance < closestDist then
+                                closestDist = distance
+                                closest = player
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if closest then
+                silentAimLockedTarget = closest
+                SilentAim.LockedTarget = closest
+                -- print("Silent Aim LockOnly: Auto-locked onto " .. closest.Name)
+            end
+        end
+    end
+end
+
+-- FUNCTION: ตรวจสอบว่ามีศัตรูในแนวเล็งหรือไม่ (ไม่สนกำแพง)
+local function IsEnemyInSight()
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    -- ตรวจสอบทุกผู้เล่น
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsValidTarget(player) then
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                local head = character:FindFirstChild("Head")
+                
+                if humanoidRootPart then
+                    -- แปลงตำแหน่งเป้าหมายเป็นหน้าจอ
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                    
+                    if onScreen then
+                        -- คำนวณระยะทางจากเมาส์ถึงเป้าหมายบนหน้าจอ
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        
+                        -- ถ้าอยู่ในระยะ FOV ที่กำหนด (ปรับค่าได้ตามต้องการ)
+                        local triggerbotFOV = 30
+                        if distance < triggerbotFOV then
+                            return true, player
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return false, nil
+end
+
+-- แก้ไขฟังก์ชัน IsMouseOverValidTarget ให้ทำงานแยกจากระบบอื่น
+local function IsMouseOverValidTarget()
+    -- วิธีที่ 1: ตรวจสอบจากตำแหน่งบนหน้าจอ (ไม่สนกำแพง)
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsValidTarget(player) then
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                    
+                    if onScreen then
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        
+                        -- ใช้ FOV เล็กๆ สำหรับ Triggerbot
+                        local triggerbotFOV = 25
+                        if distance < triggerbotFOV then
+                            return true, player
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- วิธีที่ 2: ตรวจสอบจาก Mouse.Target (สำรอง)
+    if Mouse.Target then
+        local targetPlayer = Players:GetPlayerFromCharacter(Mouse.Target.Parent)
+        if not targetPlayer then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and Mouse.Target:IsDescendantOf(player.Character) then
+                    targetPlayer = player
+                    break
+                end
+            end
+        end
+        
+        if targetPlayer and IsValidTarget(targetPlayer) then
+            return true, targetPlayer
+        end
+    end
+    
+    return false, nil
+end
+
+-- แก้ไขฟังก์ชัน UpdateTriggerbot ให้ไม่รบกวนระบบอื่น
+local function UpdateTriggerbot()
+    if not config["Combat"]["Triggerbot"]["Enabled"] or not config["Combat"]["Triggerbot"]["Active"] then
+        if triggerbotClicked then
+            mouse1release()
+            triggerbotClicked = false
+        end
+        return
+    end
+    
+    -- ตรวจสอบว่าเป็นอาวุธที่อนุญาต
+    local currentWeapon = GetCurrentWeapon()
+    if not IsWeaponWhitelisted(currentWeapon, "Triggerbot") then
+        if triggerbotClicked then
+            mouse1release()
+            triggerbotClicked = false
+        end
+        return
+    end
+    
+    -- ใช้ฟังก์ชันตรวจสอบเป้าหมายแบบเดียวกับระบบอื่น
+    local isValidTarget = false
+    local targetPlayer = nil
+    
+    -- วิธีที่ 1: ตรวจสอบจากตำแหน่งบนหน้าจอ (ใช้ FOV เล็กๆ)
+    local mousePos = UserInputService:GetMouseLocation()
+    local triggerbotFOV = 25
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and IsValidTarget(player) then
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                    
+                    if onScreen then
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        
+                        if distance < triggerbotFOV then
+                            -- ใช้ WallCheck ของ Global จาก Checks
+                            if config["Combat"]["Checks"]["WallCheck"] then
+                                local origin = Camera.CFrame.Position
+                                local targetPos = humanoidRootPart.Position
+                                local direction = (targetPos - origin).Unit
+                                local distanceToTarget = (targetPos - origin).Magnitude
+                                
+                                local raycastParams = RaycastParams.new()
+                                raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                                raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                                
+                                local raycastResult = workspace:Raycast(origin, direction * distanceToTarget, raycastParams)
+                                
+                                if raycastResult then
+                                    local hitPart = raycastResult.Instance
+                                    -- ตรวจสอบว่าที่โดนคือตัวผู้เล่นหรือไม่
+                                    if hitPart:IsDescendantOf(player.Character) then
+                                        isValidTarget = true
+                                        targetPlayer = player
+                                        break
+                                    end
+                                else
+                                    -- ไม่มีอะไรขวาง
+                                    isValidTarget = true
+                                    targetPlayer = player
+                                    break
+                                end
+                            else
+                                -- ไม่เปิด WallCheck - ยิงได้เลย
+                                isValidTarget = true
+                                targetPlayer = player
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- วิธีที่ 2: ตรวจสอบจาก Mouse.Target (สำรอง)
+    if not isValidTarget and Mouse.Target then
+        local hitPart = Mouse.Target
+        local potentialPlayer = Players:GetPlayerFromCharacter(hitPart.Parent)
+        
+        if not potentialPlayer then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and hitPart:IsDescendantOf(player.Character) then
+                    potentialPlayer = player
+                    break
+                end
+            end
+        end
+        
+        if potentialPlayer and IsValidTarget(potentialPlayer) then
+            -- ใช้ WallCheck ของ Global จาก Checks
+            if config["Combat"]["Checks"]["WallCheck"] then
+                local origin = Camera.CFrame.Position
+                local targetPos = potentialPlayer.Character:FindFirstChild("HumanoidRootPart").Position
+                local direction = (targetPos - origin).Unit
+                local distanceToTarget = (targetPos - origin).Magnitude
+                
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                
+                local raycastResult = workspace:Raycast(origin, direction * distanceToTarget, raycastParams)
+                
+                if raycastResult then
+                    local hitPart = raycastResult.Instance
+                    if hitPart:IsDescendantOf(potentialPlayer.Character) then
+                        isValidTarget = true
+                        targetPlayer = potentialPlayer
+                    end
+                else
+                    isValidTarget = true
+                    targetPlayer = potentialPlayer
+                end
+            else
+                isValidTarget = true
+                targetPlayer = potentialPlayer
+            end
+        end
+    end
+    
+    if isValidTarget then
+        -- ตรวจสอบว่าเป้าหมายยังมีชีวิตอยู่
+        if targetPlayer and targetPlayer.Character then
+            local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                -- หา delay ของอาวุธ
+                triggerbotDelay = GetWeaponDelay(currentWeapon)
+                
+                -- ตรวจสอบว่า delay ผ่านแล้ว
+                if tick() - triggerbotTimer >= triggerbotDelay then
+                    -- กดปุ่มยิง
+                    mouse1press()
+                    triggerbotClicked = true
+                    triggerbotTimer = tick()
+                    -- print("Triggerbot: Firing at " .. targetPlayer.Name)
+                end
+            else
+                -- ปล่อยปุ่มยิงถ้าเป้าหมายตายแล้ว
+                if triggerbotClicked then
+                    mouse1release()
+                    triggerbotClicked = false
+                    -- print("Triggerbot: Target died - Stopped firing")
+                end
+            end
+        else
+            -- ปล่อยปุ่มยิงถ้าไม่มี character
+            if triggerbotClicked then
+                mouse1release()
+                triggerbotClicked = false
+                -- print("Triggerbot: No character - Stopped firing")
+            end
+        end
+    else
+        -- ปล่อยปุ่มยิงถ้าไม่มีเป้าหมาย
+        if triggerbotClicked then
+            mouse1release()
+            triggerbotClicked = false
+        end
+    end
+end
+
+-- แก้ไขฟังก์ชัน UpdateTriggerbotTarget ให้ไม่รบกวนระบบอื่น
+local function UpdateTriggerbotTarget()
+    if not config["Combat"]["Triggerbot"]["Enabled"] or not config["Combat"]["Triggerbot"]["Active"] then
+        return
+    end
+    
+    -- Check if we have a locked target
+    if triggerbotLockedTarget then
+        if not IsValidTarget(triggerbotLockedTarget) or (config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(triggerbotLockedTarget)) then
+            triggerbotLockedTarget = nil
+            -- print("Triggerbot: Target unlocked (invalid/knocked)")
+        end
+    end
+end
+
+-- UPDATED: Get closest player in FOV for Aimbot - FIXED FOV CHECK
+local function GetClosestInAimbotFOV()
+    -- Check if current weapon is whitelisted (only if whitelist is enabled)
+    local currentWeapon = GetCurrentWeapon()
+    if not IsWeaponWhitelisted(currentWeapon, "Aimlock") then
+        return nil
+    end
+    
+    local closest = nil
+    local closestDist = config["Combat"]["Aimlock"]["FOVRadius"]
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if not IsValidTarget(player) then continue end
+        
+        local character = player.Character
+        local targetPart = character:FindFirstChild(config["Combat"]["Aimlock"]["HitPart"])
+        if not targetPart then continue end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+        
+        if onScreen then
+            local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+            
+            -- FIXED: Use the actual FOV radius from config
+            if distance <= config["Combat"]["Aimlock"]["FOVRadius"] then
+                if distance < closestDist then
+                    closestDist = distance
+                    closest = player
+                end
+            end
+        end
+    end
+    
+    return closest
+end
+
+-- UPDATED: Get closest player in FOV for Silent Aim - FIXED FOV CHECK
+local function GetClosestInSilentFOV()
+    -- Check if current weapon is whitelisted (only if whitelist is enabled)
+    local currentWeapon = GetCurrentWeapon()
+    if not IsWeaponWhitelisted(currentWeapon, "SilentAim") then
+        return nil
+    end
+    
+    if currentSilentMode == "LockOnly" and silentAimLockedTarget then
+        return silentAimLockedTarget
+    end
+    
+    local closest = nil
+    local closestDist = config["Combat"]["SilentAim"]["FOVRadius"]
+    local mousePos = UserInputService:GetMouseLocation()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if not IsValidTarget(player) then continue end
+        
+        local character = player.Character
+        local targetPart = character:FindFirstChild(config["Combat"]["SilentAim"]["HitPart"])
+        if not targetPart then continue end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+        
+        if onScreen then
+            local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+            
+            -- FIXED: Use the actual FOV radius from config
+            if distance <= config["Combat"]["SilentAim"]["FOVRadius"] then
+                if distance < closestDist then
+                    closestDist = distance
+                    closest = player
+                end
+            end
+        end
+    end
+    
+    return closest
+end
+
+-- NEW: Improved FOV synchronization between visuals and functionality
+local function SyncFOVSettings()
+    -- Sync Aimbot FOV - FIXED: Only use FOVRadius from Aimlock config
+    if aimbotFovCircle then
+        aimbotFovCircle.Radius = config["Combat"]["Aimlock"]["FOVRadius"]
+    end
+    
+    -- Sync Silent Aim FOV - FIXED: Only use FOVRadius from SilentAim config
+    if silentAimFovCircle then
+        silentAimFovCircle.Radius = config["Combat"]["SilentAim"]["FOVRadius"]
+    end
+    
+    -- Sync LockOnly FOV - FIXED: Only use FOVRadius from SilentAim config
+    if lockOnlyFovCircle then
+        lockOnlyFovCircle.Radius = config["Combat"]["SilentAim"]["FOVRadius"]
+    end
+end
+
+-- UPDATED: Toggle LockOnly mode with G key
+local function ToggleLockOnlyMode()
+    -- Check if Silent Aim is active
+    if not SilentAim.Active then
+        -- print("Silent Aim: OFF - Press H to enable Silent Aim first")
+        return
+    end
+    
+    -- If we have a locked target, unlock it and switch to FOV mode
+    if silentAimLockedTarget then
+        -- print("Silent Aim LockOnly: Unlocked " .. silentAimLockedTarget.Name)
+        silentAimLockedTarget = nil
+        SilentAim.LockedTarget = nil
+        currentSilentMode = "FOV"
+        SilentAim.Mode = "FOV"
+        
+        -- print("Silent Mode: Switched to FOV")
+    else
+        -- No locked target, try to lock one
+        local playerUnderMouse = GetPlayerUnderMouse()
+        
+        if not playerUnderMouse then
+            playerUnderMouse = GetPlayerInMouseDirection()
+        end
+        
+        if not playerUnderMouse then 
+            -- print("Silent Aim LockOnly: No valid target in mouse direction")
+            return 
+        end
+        
+        silentAimLockedTarget = playerUnderMouse
+        SilentAim.LockedTarget = playerUnderMouse
+        currentSilentMode = "LockOnly"
+        SilentAim.Mode = "LockOnly"
+        
+        -- print("Silent Aim LockOnly: Locked onto " .. playerUnderMouse.Name)
+        -- print("Silent Mode: Switched to LockOnly")
+    end
+end
+
+-- UPDATED: Switch Tracer Color
+local function SwitchTracerColor()
+    local colors = config["Visuals"]["Tracer"]["Colors"]
+    local colorNames = config["Visuals"]["Tracer"]["ColorNames"]
+    local currentIndex = config["Visuals"]["Tracer"]["CurrentColorIndex"]
+    
+    -- Switch to next color
+    currentIndex = (currentIndex % #colors) + 1
+    config["Visuals"]["Tracer"]["CurrentColorIndex"] = currentIndex
+    config["Visuals"]["Tracer"]["Color"] = colors[currentIndex]
+    
+    -- Update tracer color
+    if tracerLine then
+        tracerLine.Color = colors[currentIndex]
+    end
+    
+    -- print("Tracer Color: " .. colorNames[currentIndex])
+end
+
+-- NEW: Adjust Tracer Transparency
+local function AdjustTracerTransparency()
+    -- Cycle through transparency values
+    local transparencyValues = {0.1, 0.3, 0.5, 0.7, 0.9}
+    local currentTransparency = config["Visuals"]["Tracer"]["Transparency"]
+    
+    local nextIndex = 1
+    for i, val in ipairs(transparencyValues) do
+        if math.abs(val - currentTransparency) < 0.05 then
+            nextIndex = (i % #transparencyValues) + 1
+            break
+        end
+    end
+    
+    config["Visuals"]["Tracer"]["Transparency"] = transparencyValues[nextIndex]
+    
+    if tracerLine then
+        tracerLine.Transparency = 1 - transparencyValues[nextIndex]
+    end
+    
+    -- print("Tracer Transparency: " .. math.floor(transparencyValues[nextIndex] * 100) .. "%")
+end
+
+-- UPDATED: Adjust LockOnly FOV Size - FIXED SYNCHRONIZATION
+local function AdjustLockOnlyFOV()
+    -- Cycle through FOV sizes
+    local fovSizes = {100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000}
+    local currentSize = config["Combat"]["SilentAim"]["FOVRadius"]
+    
+    local nextIndex = 1
+    for i, size in ipairs(fovSizes) do
+        if size == currentSize then
+            nextIndex = (i % #fovSizes) + 1
+            break
+        end
+    end
+    
+    -- Update both combat and visual settings
+    config["Combat"]["SilentAim"]["FOVRadius"] = fovSizes[nextIndex]
+    
+    -- Update FOV circles
+    if lockOnlyFovCircle then
+        lockOnlyFovCircle.Radius = fovSizes[nextIndex]
+    end
+    if silentAimFovCircle then
+        silentAimFovCircle.Radius = fovSizes[nextIndex]
+    end
+    
+    -- print("LockOnly FOV Size: " .. fovSizes[nextIndex])
+end
+
+-- NEW: Change LockOnly FOV Color
+local function ChangeLockOnlyFOVColor()
+    -- Cycle through colors
+    local colors = config["Visuals"]["Tracer"]["Colors"]
+    local colorNames = config["Visuals"]["Tracer"]["ColorNames"]
+    local currentColor = config["Visuals"]["LockOnlyFOV"]["Color"]
+    
+    local nextIndex = 1
+    for i, color in ipairs(colors) do
+        if color.R == currentColor.R and color.G == currentColor.G and color.B == currentColor.B then
+            nextIndex = (i % #colors) + 1
+            break
+        end
+    end
+    
+    config["Visuals"]["LockOnlyFOV"]["Color"] = colors[nextIndex]
+    
+    if lockOnlyFovCircle then
+        lockOnlyFovCircle.Color = colors[nextIndex]
+    end
+    
+    -- print("LockOnly FOV Color: " .. colorNames[nextIndex])
+end
+
+-- UPDATED: Adjust Silent Aim FOV Size - FIXED SYNCHRONIZATION
+local function AdjustSilentAimFOV()
+    -- Cycle through FOV sizes
+    local fovSizes = {100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000}
+    local currentSize = config["Combat"]["SilentAim"]["FOVRadius"]
+    
+    local nextIndex = 1
+    for i, size in ipairs(fovSizes) do
+        if size == currentSize then
+            nextIndex = (i % #fovSizes) + 1
+            break
+        end
+    end
+    
+    -- Update both combat and visual settings
+    config["Combat"]["SilentAim"]["FOVRadius"] = fovSizes[nextIndex]
+    
+    -- Update FOV circles
+    if silentAimFovCircle then
+        silentAimFovCircle.Radius = fovSizes[nextIndex]
+    end
+    if lockOnlyFovCircle then
+        lockOnlyFovCircle.Radius = fovSizes[nextIndex]
+    end
+    
+    -- print("Silent Aim FOV Size: " .. fovSizes[nextIndex])
+end
+
+-- NEW: Change Silent Aim FOV Color
+local function ChangeSilentAimFOVColor()
+    -- Cycle through colors
+    local colors = config["Visuals"]["Tracer"]["Colors"]
+    local colorNames = config["Visuals"]["Tracer"]["ColorNames"]
+    local currentColor = config["Visuals"]["SilentAimFOV"]["Color"]
+    
+    local nextIndex = 1
+    for i, color in ipairs(colors) do
+        if color.R == currentColor.R and color.G == currentColor.G and color.B == currentColor.B then
+            nextIndex = (i % #colors) + 1
+            break
+        end
+    end
+    
+    config["Visuals"]["SilentAimFOV"]["Color"] = colors[nextIndex]
+    
+    if silentAimFovCircle then
+        silentAimFovCircle.Color = colors[nextIndex]
+    end
+    
+    -- print("Silent Aim FOV Color: " .. colorNames[nextIndex])
+end
+
+-- UPDATED: Adjust Aimbot FOV Size - FIXED SYNCHRONIZATION
+local function AdjustAimbotFOV()
+    -- Cycle through FOV sizes
+    local fovSizes = {100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000}
+    local currentSize = config["Combat"]["Aimlock"]["FOVRadius"]
+    
+    local nextIndex = 1
+    for i, size in ipairs(fovSizes) do
+        if size == currentSize then
+            nextIndex = (i % #fovSizes) + 1
+            break
+        end
+    end
+    
+    -- Update both combat and visual settings
+    config["Combat"]["Aimlock"]["FOVRadius"] = fovSizes[nextIndex]
+    
+    -- Update FOV circle
+    if aimbotFovCircle then
+        aimbotFovCircle.Radius = fovSizes[nextIndex]
+    end
+    
+    -- print("Aimbot FOV Size: " .. fovSizes[nextIndex])
+end
+
+-- NEW: Change Aimbot FOV Color
+local function ChangeAimbotFOVColor()
+    -- Cycle through colors
+    local colors = config["Visuals"]["Tracer"]["Colors"]
+    local colorNames = config["Visuals"]["Tracer"]["ColorNames"]
+    local currentColor = config["Visuals"]["AimbotFOV"]["Color"]
+    
+    local nextIndex = 1
+    for i, color in ipairs(colors) do
+        if color.R == currentColor.R and color.G == currentColor.G and color.B == currentColor.B then
+            nextIndex = (i % #colors) + 1
+            break
+        end
+    end
+    
+    config["Visuals"]["AimbotFOV"]["Color"] = colors[nextIndex]
+    
+    if aimbotFovCircle then
+        aimbotFovCircle.Color = colors[nextIndex]
+    end
+    
+    -- print("Aimbot FOV Color: " .. colorNames[nextIndex])
+end
+
+-- NEW: Toggle Aimbot Shake
+local function ToggleAimbotShake()
+    config["Combat"]["Aimlock"]["Shake"]["Enabled"] = not config["Combat"]["Aimlock"]["Shake"]["Enabled"]
+    -- print("Aimbot Shake: " .. (config["Combat"]["Aimlock"]["Shake"]["Enabled"] and "ON" or "OFF"))
+end
+
+-- NEW: Toggle Visual Hitbox
+local function ToggleVisualHitbox()
+    config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] = not config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"]
+    -- print("Visual Hitbox: " .. (config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] and "ON" or "OFF"))
+    
+    -- If turning off, remove all existing hitboxes
+    if not config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+        for player, _ in pairs(visualHitboxes) do
+            RemoveVisualHitbox(player)
+        end
+    end
+end
+
+-- NEW: Adjust Hitbox Extend X
+local function AdjustHitboxExtendX()
+    -- Cycle through extend values
+    local extendValues = {0, 1, 2, 3, 4, 5}
+    local currentExtend = config["Combat"]["Hitbox"]["Extend"]["X"]
+    
+    local nextIndex = 1
+    for i, val in ipairs(extendValues) do
+        if val == currentExtend then
+            nextIndex = (i % #extendValues) + 1
+            break
+        end
+    end
+    
+    config["Combat"]["Hitbox"]["Extend"]["X"] = extendValues[nextIndex]
+    
+    -- Recreate all hitboxes with new extend value
+    for player, _ in pairs(visualHitboxes) do
+        RemoveVisualHitbox(player)
+        if config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+            CreateVisualHitbox(player)
+        end
+    end
+    
+    -- print("Hitbox Extend X: " .. extendValues[nextIndex])
+end
+
+-- NEW: Adjust Hitbox Extend Y
+local function AdjustHitboxExtendY()
+    -- Cycle through extend values
+    local extendValues = {0, 1, 2, 3, 4, 5}
+    local currentExtend = config["Combat"]["Hitbox"]["Extend"]["Y"]
+    
+    local nextIndex = 1
+    for i, val in ipairs(extendValues) do
+        if val == currentExtend then
+            nextIndex = (i % #extendValues) + 1
+            break
+        end
+    end
+    
+    config["Combat"]["Hitbox"]["Extend"]["Y"] = extendValues[nextIndex]
+    
+    -- Recreate all hitboxes with new extend value
+    for player, _ in pairs(visualHitboxes) do
+        RemoveVisualHitbox(player)
+        if config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+            CreateVisualHitbox(player)
+        end
+    end
+    
+    -- print("Hitbox Extend Y: " .. extendValues[nextIndex])
+end
+
+-- FIXED: Create drawings with error handling
+local function CreateDrawings()
+    local success, err = pcall(function()
+        if Drawing then
+            -- Aimbot FOV Circle
+            aimbotFovCircle = Drawing.new("Circle")
+            aimbotFovCircle.Visible = false
+            aimbotFovCircle.Radius = config["Combat"]["Aimlock"]["FOVRadius"]
+            aimbotFovCircle.Color = config["Visuals"]["AimbotFOV"]["Color"]
+            aimbotFovCircle.Thickness = config["Visuals"]["AimbotFOV"]["Thickness"]
+            aimbotFovCircle.Filled = config["Visuals"]["AimbotFOV"]["Filled"]
+            aimbotFovCircle.Transparency = config["Visuals"]["AimbotFOV"]["Transparency"]
+            
+            -- Silent Aim FOV Circle
+            silentAimFovCircle = Drawing.new("Circle")
+            silentAimFovCircle.Visible = false
+            silentAimFovCircle.Radius = config["Combat"]["SilentAim"]["FOVRadius"]
+            silentAimFovCircle.Color = config["Visuals"]["SilentAimFOV"]["Color"]
+            silentAimFovCircle.Thickness = config["Visuals"]["SilentAimFOV"]["Thickness"]
+            silentAimFovCircle.Filled = config["Visuals"]["SilentAimFOV"]["Filled"]
+            silentAimFovCircle.Transparency = config["Visuals"]["SilentAimFOV"]["Transparency"]
+            
+            -- LockOnly FOV Circle
+            lockOnlyFovCircle = Drawing.new("Circle")
+            lockOnlyFovCircle.Visible = false
+            lockOnlyFovCircle.Radius = config["Combat"]["SilentAim"]["FOVRadius"]
+            lockOnlyFovCircle.Color = config["Visuals"]["LockOnlyFOV"]["Color"]
+            lockOnlyFovCircle.Thickness = config["Visuals"]["LockOnlyFOV"]["Thickness"]
+            lockOnlyFovCircle.Filled = config["Visuals"]["LockOnlyFOV"]["Filled"]
+            lockOnlyFovCircle.Transparency = config["Visuals"]["LockOnlyFOV"]["Transparency"]
+            
+            tracerLine = Drawing.new("Line")
+            tracerLine.Visible = false
+            tracerLine.Color = config["Visuals"]["Tracer"]["Color"]
+            tracerLine.Thickness = config["Visuals"]["Tracer"]["Thickness"]
+            tracerLine.Transparency = 1 - config["Visuals"]["Tracer"]["Transparency"] -- NEW: Set transparency
+            
+            targetText = Drawing.new("Text")
+            targetText.Visible = config["Visuals"]["TargetInfo"]["Show"]
+            targetText.Color = config["Visuals"]["TargetInfo"]["Color"]
+            targetText.Size = config["Visuals"]["TargetInfo"]["Size"]
+            targetText.Text = "Target: None"
+            targetText.Position = Vector2.new(10, 30)
+            
+            modeText = Drawing.new("Text")
+            modeText.Visible = true
+            modeText.Color = Color3.fromRGB(255, 255, 255)
+            modeText.Size = 16
+            modeText.Text = "Mode: " .. currentAimMode
+            modeText.Position = Vector2.new(10, 10)
+            
+            -- print("Drawings created successfully")
+        else
+            warn("Drawing library not available - Visuals disabled")
+        end
+    end)
+    
+    if not success then
+        warn("Failed to create drawings: " .. tostring(err))
+    end
+end
+
+-- FIXED 360 TRACER: Main tracer for all systems
+-- UPDATED: FIXED 360 TRACER - Improved FOV visibility logic
+local function UpdateVisuals()
+    if not tracerLine and not targetText then return end
+    
+    local currentTarget = nil
+    local currentMode = ""
+    local showTracer = false
+    
+    -- UPDATE AIMBOT FOV CIRCLE - FIXED VISIBILITY
+    if aimbotFovCircle then
+        local mousePos = UserInputService:GetMouseLocation()
+        aimbotFovCircle.Position = mousePos
+        
+        local shouldShow = config["Combat"]["Aimlock"]["Active"] and config["Combat"]["Aimlock"]["UseFOV"] and config["Visuals"]["AimbotFOV"]["Show"]
+        
+        aimbotFovCircle.Visible = shouldShow
+        aimbotFovCircle.Filled = config["Visuals"]["AimbotFOV"]["Filled"]
+        
+        if shouldShow then
+            aimbotFovCircle.Radius = config["Combat"]["Aimlock"]["FOVRadius"]
+            aimbotFovCircle.Color = config["Visuals"]["AimbotFOV"]["Color"]
+        end
+    end
+    
+    -- UPDATE SILENT AIM FOV CIRCLE - FIXED VISIBILITY
+    if silentAimFovCircle then
+        local mousePos = UserInputService:GetMouseLocation()
+        silentAimFovCircle.Position = mousePos
+        
+        local shouldShow = config["Combat"]["SilentAim"]["Active"] and currentSilentMode == "FOV" and config["Visuals"]["SilentAimFOV"]["Show"]
+        
+        silentAimFovCircle.Visible = shouldShow
+        silentAimFovCircle.Filled = config["Visuals"]["SilentAimFOV"]["Filled"]
+        
+        if shouldShow then
+            silentAimFovCircle.Radius = config["Combat"]["SilentAim"]["FOVRadius"]
+            silentAimFovCircle.Color = config["Visuals"]["SilentAimFOV"]["Color"]
+        end
+    end
+    
+    -- UPDATE LockOnly FOV CIRCLE - FIXED VISIBILITY
+    if lockOnlyFovCircle then
+        local mousePos = UserInputService:GetMouseLocation()
+        lockOnlyFovCircle.Position = mousePos
+        
+        local shouldShow = config["Combat"]["SilentAim"]["Active"] and currentSilentMode == "LockOnly" and config["Visuals"]["LockOnlyFOV"]["Show"]
+        
+        lockOnlyFovCircle.Visible = shouldShow
+        lockOnlyFovCircle.Filled = config["Visuals"]["LockOnlyFOV"]["Filled"]
+        
+        if shouldShow then
+            lockOnlyFovCircle.Radius = config["Combat"]["SilentAim"]["FOVRadius"]
+            lockOnlyFovCircle.Color = config["Visuals"]["LockOnlyFOV"]["Color"]
+        end
+    end
+    
+    -- Check target for all modes
+    if config["Combat"]["Aimlock"]["Active"] and target then
+        currentTarget = target
+        currentMode = "AIM"
+        showTracer = true
+        if config["Combat"]["Aimlock"]["StickyAim"] and stickyLockedTarget then
+            currentMode = currentMode .. "-STICKY"
+        end
+    elseif config["Combat"]["SilentAim"]["Active"] then
+        showTracer = true
+        
+        if currentSilentMode == "LockOnly" and silentAimLockedTarget then
+            currentTarget = silentAimLockedTarget
+            currentMode = "SILENT-LOCK"
+        elseif currentSilentMode == "FOV" then
+            local closest = GetClosestInSilentFOV()
+            if closest then
+                currentTarget = closest
+                currentMode = "SILENT-FOV"
+            end
+        end
+    -- แก้ไขตรงนี้: ไม่แสดง Tracer เมื่อใช้ Triggerbot
+    elseif config["Combat"]["Triggerbot"]["Active"] then
+    -- ยังคงแสดง Target Info แต่ไม่แสดง Tracer
+        local isValidTarget, targetPlayer = IsMouseOverValidTarget()
+        if isValidTarget then
+            currentTarget = targetPlayer
+            currentMode = "TRIGGER"
+            showTracer = false  -- เปลี่ยนเป็น false
+    end
+    elseif config["Movement"]["Orbit"]["Active"] and config["Movement"]["Orbit"]["Target"] then
+        currentTarget = config["Movement"]["Orbit"]["Target"]
+        currentMode = "ORBIT"
+        showTracer = true
+    end
+    
+    -- MAIN TRACER - Same tracer for all systems
+    if tracerLine and showTracer then
+        if currentTarget and currentTarget.Character then
+            local targetPart = currentTarget.Character:FindFirstChild(config["Combat"]["SilentAim"]["HitPart"])
+            if not targetPart then
+                targetPart = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+            end
+            
+            if targetPart then
+                local velocity = currentTarget.Character:FindFirstChild("HumanoidRootPart") and 
+                                currentTarget.Character.HumanoidRootPart.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
+                local prediction = config["Combat"]["SilentAim"]["Prediction"]
+                local predictedPos = targetPart.Position + Vector3.new(
+                    velocity.X * prediction.X,
+                    velocity.Y * prediction.Y,
+                    velocity.Z * prediction.Z
+                )
+                
+                local screenPos = Camera:WorldToViewportPoint(predictedPos)
+                local mousePos = UserInputService:GetMouseLocation()
+                local viewportSize = Camera.ViewportSize
+                
+                local fromPos = Vector2.new(mousePos.X, mousePos.Y)
+                local toPos = Vector2.new(screenPos.X, screenPos.Y)
+                
+                if screenPos.Z < 0 then
+                    local cameraCenter = Vector2.new(viewportSize.X/2, viewportSize.Y/2)
+                    local targetDirection = (Vector2.new(screenPos.X, screenPos.Y) - cameraCenter).Unit
+                    
+                    local edgeX, edgeY
+                    if math.abs(targetDirection.X) > math.abs(targetDirection.Y) then
+                        edgeX = targetDirection.X > 0 and viewportSize.X or 0
+                        edgeY = cameraCenter.Y + targetDirection.Y * (math.abs(edgeX - cameraCenter.X) / math.abs(targetDirection.X))
+                    else
+                        edgeY = targetDirection.Y > 0 and viewportSize.Y or 0
+                        edgeX = cameraCenter.X + targetDirection.X * (math.abs(edgeY - cameraCenter.Y) / math.abs(targetDirection.Y))
+                    end
+                    
+                    toPos = Vector2.new(
+                        math.clamp(edgeX, 10, viewportSize.X - 10),
+                        math.clamp(edgeY, 10, viewportSize.Y - 10)
+                    )
+                end
+                
+                -- Use current tracer color for all systems
+                tracerLine.Color = config["Visuals"]["Tracer"]["Color"]
+                tracerLine.Transparency = 1 - config["Visuals"]["Tracer"]["Transparency"]
+                tracerLine.From = fromPos
+                tracerLine.To = toPos
+                tracerLine.Visible = true
+            else
+                tracerLine.Visible = false
+            end
+        else
+            tracerLine.Visible = false
+        end
+    else
+        if tracerLine then tracerLine.Visible = false end
+    end
+    
+    -- Update Target Text
+    if targetText then
+        if currentTarget and currentTarget.Character then
+            local humanoidRootPart = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local screenPos = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+                local distance = (humanoidRootPart.Position - Camera.CFrame.Position).Magnitude
+                local status = IsPlayerKnocked(currentTarget) and "KNOCKED" or "ALIVE"
+                local behindText = screenPos.Z < 0 and " [BEHIND]" or ""
+                local wsText = config["Movement"]["WalkSpeed"]["Active"] and " WS:" .. config["Movement"]["WalkSpeed"]["Speed"] or ""
+                local jpText = config["Movement"]["JumpPower"]["Active"] and " JP:" .. config["Movement"]["JumpPower"]["Power"] or ""
+                local stickyText = (config["Combat"]["Aimlock"]["StickyAim"] and stickyLockedTarget) and " STICKY" or ""
+                local orbitText = config["Movement"]["Orbit"]["Active"] and " ORBIT" or ""
+                local lockOnlyText = (currentSilentMode == "LockOnly" and silentAimLockedTarget) and " LOCKED" or ""
+                local triggerbotText = config["Combat"]["Triggerbot"]["Active"] and " TRIGGER" or ""
+                local orbitTypeText = config["Movement"]["Orbit"]["Active"] and (" [" .. config["Movement"]["Orbit"]["Type"] .. "]") or ""
+                local predictionText = (config["Combat"]["SilentAim"]["Active"] and string.format(" Pred: %.2f,%.2f,%.2f", 
+                    config["Combat"]["SilentAim"]["Prediction"].X,
+                    config["Combat"]["SilentAim"]["Prediction"].Y,
+                    config["Combat"]["SilentAim"]["Prediction"].Z)) or ""
+                local colorIndex = config["Visuals"]["Tracer"]["CurrentColorIndex"]
+                local colorName = config["Visuals"]["Tracer"]["ColorNames"][colorIndex]
+                local tracerColorText = " " .. colorName
+                local tracerTransparencyText = " T:" .. math.floor(config["Visuals"]["Tracer"]["Transparency"] * 100) .. "%"
+                local lockOnlyFOVText = (currentSilentMode == "LockOnly") and (" LFOV:" .. config["Combat"]["SilentAim"]["FOVRadius"]) or ""
+                local silentAimFOVText = (currentSilentMode == "FOV") and (" SFOV:" .. config["Combat"]["SilentAim"]["FOVRadius"]) or ""
+                local aimbotFOVText = (config["Combat"]["Aimlock"]["Active"] and config["Combat"]["Aimlock"]["UseFOV"]) and (" AFOV:" .. config["Combat"]["Aimlock"]["FOVRadius"]) or ""
+                local spectateText = config["Movement"]["Spectate"]["Active"] and " SPECTATE:" .. (config["Movement"]["Spectate"]["Target"] and config["Movement"]["Spectate"]["Target"].Name or "") or ""
+                local shakeText = config["Combat"]["Aimlock"]["Shake"]["Enabled"] and " SHAKE" or ""
+                local hitboxText = config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] and " HITBOX" or ""
+                local hitboxExtendText = config["Combat"]["Hitbox"]["Enabled"] and (" EXT:" .. config["Combat"]["Hitbox"]["Extend"]["X"] .. "," .. config["Combat"]["Hitbox"]["Extend"]["Y"]) or ""
+                local espText = config["Visuals"]["ESP"]["Enabled"] and " ESP" or ""
+                
+                targetText.Text = string.format("Target: %s (%.1f) [%s] %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", 
+                    currentTarget.Name, distance, currentMode, status, behindText, wsText, jpText, stickyText, orbitText, lockOnlyText, triggerbotText, orbitTypeText, predictionText, tracerColorText, tracerTransparencyText, lockOnlyFOVText, silentAimFOVText, aimbotFOVText, spectateText, shakeText, hitboxText, hitboxExtendText, espText)
+                targetText.Visible = config["Visuals"]["TargetInfo"]["Show"]
+            else
+                targetText.Text = "Target: None"
+            end
+        else
+            targetText.Text = "Target: None"
+        end
+    end
+    
+    -- Update mode text
+    if modeText then
+        local colorIndex = config["Visuals"]["Tracer"]["CurrentColorIndex"]
+        local colorName = config["Visuals"]["Tracer"]["ColorNames"][colorIndex]
+        
+        modeText.Text = "Mode: " .. currentAimMode .. " | Silent: " .. currentSilentMode .. " | Tracer: " .. colorName .. " T:" .. math.floor(config["Visuals"]["Tracer"]["Transparency"] * 100) .. "%"
+        if config["Movement"]["WalkSpeed"]["Active"] then
+            modeText.Text = modeText.Text .. " | WS: " .. config["Movement"]["WalkSpeed"]["Speed"]
+        end
+        if config["Movement"]["JumpPower"]["Active"] then
+            modeText.Text = modeText.Text .. " | JP: " .. config["Movement"]["JumpPower"]["Power"]
+        end
+        if config["Combat"]["Aimlock"]["StickyAim"] then
+            modeText.Text = modeText.Text .. " | STICKY"
+        end
+        if config["Movement"]["Orbit"]["Active"] then
+            modeText.Text = modeText.Text .. " | ORBIT: " .. config["Movement"]["Orbit"]["Type"]
+        end
+        if currentSilentMode == "LockOnly" and silentAimLockedTarget then
+            modeText.Text = modeText.Text .. " | LOCKED: " .. silentAimLockedTarget.Name
+        end
+        if config["Combat"]["Triggerbot"]["Active"] then
+            modeText.Text = modeText.Text .. " | TRIGGER"
+        end
+        if config["Combat"]["SilentAim"]["Active"] then
+            modeText.Text = modeText.Text .. " | PRED: " .. string.format("%.2f,%.2f,%.2f", 
+                config["Combat"]["SilentAim"]["Prediction"].X,
+                config["Combat"]["SilentAim"]["Prediction"].Y,
+                config["Combat"]["SilentAim"]["Prediction"].Z)
+        end
+        if currentSilentMode == "LockOnly" then
+            modeText.Text = modeText.Text .. " | LFOV:" .. config["Combat"]["SilentAim"]["FOVRadius"]
+        elseif currentSilentMode == "FOV" then
+            modeText.Text = modeText.Text .. " | SFOV:" .. config["Combat"]["SilentAim"]["FOVRadius"]
+        end
+        if config["Combat"]["Aimlock"]["Active"] and config["Combat"]["Aimlock"]["UseFOV"] then
+            modeText.Text = modeText.Text .. " | AFOV:" .. config["Combat"]["Aimlock"]["FOVRadius"]
+        end
+        if config["Movement"]["Spectate"]["Active"] then
+            modeText.Text = modeText.Text .. " | SPECTATE: " .. (config["Movement"]["Spectate"]["Target"] and config["Movement"]["Spectate"]["Target"].Name or "None")
+        end
+        if config["Combat"]["Aimlock"]["Shake"]["Enabled"] then
+            modeText.Text = modeText.Text .. " | SHAKE"
+        end
+        if config["Combat"]["Hitbox"]["VisualHitbox"]["Enabled"] then
+            modeText.Text = modeText.Text .. " | HITBOX"
+        end
+        if config["Combat"]["Hitbox"]["Enabled"] then
+            modeText.Text = modeText.Text .. " | EXT:" .. config["Combat"]["Hitbox"]["Extend"]["X"] .. "," .. config["Combat"]["Hitbox"]["Extend"]["Y"]
+        end
+        if config["Visuals"]["ESP"]["Enabled"] then
+            modeText.Text = modeText.Text .. " | ESP"
+        end
+    end
+    
+    -- Update visual hitboxes
+    UpdateAllVisualHitboxes()
+    
+    -- Update ESP elements
+    UpdateAllESP()
+end
+
+-- FIXED AIMBOT: Improved aim function with StickyAim, Shake, and hitpart selection
+local function ApplyAimlock()
+    if not config["Combat"]["Aimlock"]["Enabled"] or not config["Combat"]["Aimlock"]["Active"] then 
+        target = nil
+        stickyLockedTarget = nil
+        return 
+    end
+    
+    -- Check if current weapon is whitelisted (only if whitelist is enabled)
+    local currentWeapon = GetCurrentWeapon()
+    if not IsWeaponWhitelisted(currentWeapon, "Aimlock") then
+        target = nil
+        stickyLockedTarget = nil
+        return
+    end
+    
+    -- DISABLED: Hybrid mode uses shared target
+    -- if hybridMode and hybridTarget then
+    --     target = hybridTarget
+    -- elseif config["Combat"]["Aimlock"]["StickyAim"] then
+    if config["Combat"]["Aimlock"]["StickyAim"] then
+        if stickyLockedTarget and stickyLockedTarget.Character then
+            if IsValidTarget(stickyLockedTarget) and not (config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(stickyLockedTarget)) then
+                target = stickyLockedTarget
+            else
+                stickyLockedTarget = nil
+                target = GetClosestInAimbotFOV()
+                if target then
+                    stickyLockedTarget = target
+                end
+            end
+        else
+            target = GetClosestInAimbotFOV()
+            if target then
+                stickyLockedTarget = target
+            end
+        end
+    else
+        target = GetClosestInAimbotFOV()
+    end
+    
+    if not target or not target.Character then return end
+    
+    if config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(target) then
+        target = nil
+        stickyLockedTarget = nil
+        return
+    end
+    
+    local character = target.Character
+    local targetPart = character:FindFirstChild(config["Combat"]["Aimlock"]["HitPart"])
+    
+    if not targetPart or not IsValidTarget(target) then 
+        target = nil
+        if config["Combat"]["Aimlock"]["StickyAim"] then
+            stickyLockedTarget = nil
+        end
+        return 
+    end
+    
+    local velocity = character:FindFirstChild("HumanoidRootPart") and character.HumanoidRootPart.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
+    local prediction = config["Combat"]["Aimlock"]["Prediction"]
+    local predictedPos = targetPart.Position + Vector3.new(
+        velocity.X * prediction.X,
+        velocity.Y * prediction.Y,
+        velocity.Z * prediction.Z
+    )
+    
+    -- NEW: Apply hitbox extend
+    if config["Combat"]["Hitbox"]["Enabled"] then
+        local extendX = config["Combat"]["Hitbox"]["Extend"]["X"]
+        local extendY = config["Combat"]["Hitbox"]["Extend"]["Y"]
+        
+        -- Add random offset within the extended hitbox
+        local offsetX = (math.random() - 0.5) * extendX * 2
+        local offsetY = (math.random() - 0.5) * extendY * 2
+        
+        predictedPos = predictedPos + Vector3.new(offsetX, offsetY, 0)
+    end
+    
+    if currentAimMode == "MouseMove" then
+        local screenPoint = Camera:WorldToViewportPoint(predictedPos)
+        local mousePos = UserInputService:GetMouseLocation()
+        
+        if screenPoint.Z > 0 then
+            local deltaX = (screenPoint.X - mousePos.X) * config["Combat"]["Aimlock"]["Smoothness"]
+            local deltaY = (screenPoint.Y - mousePos.Y) * config["Combat"]["Aimlock"]["Smoothness"]
+            
+            -- NEW: Apply shake if enabled
+            if config["Combat"]["Aimlock"]["Shake"]["Enabled"] then
+                local shakeX = (math.random() - 0.5) * 2
+                local shakeY = (math.random() - 0.5) * 2
+                
+                -- Apply vertical shake
+                if shakeY > 0 then
+                    deltaY = deltaY + config["Combat"]["Aimlock"]["Shake"]["Vertical"]["Positive"]
+                else
+                    deltaY = deltaY - config["Combat"]["Aimlock"]["Shake"]["Vertical"]["Negative"]
+                end
+                
+                -- Apply horizontal shake
+                if shakeX > 0 then
+                    deltaX = deltaX + config["Combat"]["Aimlock"]["Shake"]["Horizontal"]["Positive"]
+                else
+                    deltaX = deltaX - config["Combat"]["Aimlock"]["Shake"]["Horizontal"]["Negative"]
+                end
+            end
+            
+            if config["Combat"]["Aimlock"]["Randomize"] and config["Combat"]["Aimlock"]["Randomize"] > 0 then
+                deltaX = deltaX + (math.random() - 0.5) * config["Combat"]["Aimlock"]["Randomize"] * 100
+                deltaY = deltaY + (math.random() - 0.5) * config["Combat"]["Aimlock"]["Randomize"] * 100
+            end
+            
+            mousemoverel(deltaX, deltaY)
+        end
+    elseif currentAimMode == "Camera" then
+        local currentCFrame = Camera.CFrame
+        local lookVector = (predictedPos - currentCFrame.Position).Unit
+        local newCFrame = CFrame.new(currentCFrame.Position, currentCFrame.Position + lookVector)
+        
+        -- NEW: Apply shake if enabled
+        if config["Combat"]["Aimlock"]["Shake"]["Enabled"] then
+            local shakeX = (math.random() - 0.5) * 2
+            local shakeY = (math.random() - 0.5) * 2
+            
+            -- Apply vertical shake
+            if shakeY > 0 then
+                newCFrame = newCFrame * CFrame.Angles(0, 0, -config["Combat"]["Aimlock"]["Shake"]["Vertical"]["Positive"] * 0.01)
+            else
+                newCFrame = newCFrame * CFrame.Angles(0, 0, config["Combat"]["Aimlock"]["Shake"]["Vertical"]["Negative"] * 0.01)
+            end
+            
+            -- Apply horizontal shake
+            if shakeX > 0 then
+                newCFrame = newCFrame * CFrame.Angles(-config["Combat"]["Aimlock"]["Shake"]["Horizontal"]["Positive"] * 0.01, 0, 0)
+            else
+                newCFrame = newCFrame * CFrame.Angles(config["Combat"]["Aimlock"]["Shake"]["Horizontal"]["Negative"] * 0.01, 0, 0)
+            end
+        end
+        
+        Camera.CFrame = currentCFrame:Lerp(newCFrame, config["Combat"]["Aimlock"]["Smoothness"])
+    end
+end
+
+-- UPDATED: Orbit System - Support both Hold and Toggle modes
+local function StartOrbit()
+    -- ต้องมีผู้เล่นที่ชี้เมาส์อยู่เท่านั้น
+    local playerUnderMouse = GetPlayerUnderMouse()
+    if not playerUnderMouse then 
+        -- print("Orbit: No player under mouse - Point at a player first!")
+        return 
+    end
+    
+    -- ตรวจสอบว่าเป้าหมายถูกต้อง
+    if not IsValidTarget(playerUnderMouse) then
+        -- print("Orbit: Target is not valid")
+        return
+    end
+    
+    local targetCharacter = playerUnderMouse.Character
+    if not targetCharacter then 
+        -- print("Orbit: Target has no character")
+        return 
+    end
+    
+    local humanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then 
+        -- print("Orbit: Target has no HumanoidRootPart")
+        return 
+    end
+    
+    -- ตั้งค่าเป้าหมายเฉพาะเมื่อชี้เมาส์ไปที่ผู้เล่น
+    config["Movement"]["Orbit"]["Target"] = playerUnderMouse
+    config["Movement"]["Orbit"]["Active"] = true
+    orbitAngle = 0
+    
+    -- print("Orbit: ON - Target: " .. playerUnderMouse.Name)
+    -- print("Orbit: Radius: " .. config["Movement"]["Orbit"]["Radius"] .. " | Height: " .. config["Movement"]["Orbit"]["Height"])
+end
+
+-- อัพเดทฟังก์ชัน StopOrbit
+local function StopOrbit()
+    config["Movement"]["Orbit"]["Active"] = false
+    config["Movement"]["Orbit"]["Target"] = nil -- เคลียร์เป้าหมายเมื่อหยุด
+    
+    -- ลบ BodyVelocity
+    if LocalPlayer.Character then
+        local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            local orbitVelocity = humanoidRootPart:FindFirstChild("OrbitVelocity")
+            if orbitVelocity then
+                orbitVelocity:Destroy()
+            end
+        end
+    end
+    
+    -- print("Orbit: OFF")
+end
+
+-- IMPROVED: Teleport System - Force teleport through walls
+local function TeleportToMouseTarget()
+    local playerUnderMouse = GetPlayerUnderMouse()
+    if not playerUnderMouse then 
+        -- print("No valid player target under mouse")
+        return 
+    end
+    
+    local character = LocalPlayer.Character
+    if not character then
+        -- print("No local character")
+        return 
+    end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        -- print("No HumanoidRootPart")
+        return 
+    end
+    
+    local targetCharacter = playerUnderMouse.Character
+    if not targetCharacter then
+        -- print("Target has no character")
+        return 
+    end
+    
+    local targetHumanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not targetHumanoidRootPart then
+        -- print("Target has no HumanoidRootPart")
+        return 
+    end
+    
+    -- print("Teleporting to: " .. playerUnderMouse.Name)
+    
+    -- วิธีที่ 1: ใช้ CFrame โดยตรง (แรงที่สุด)
+    local teleportPosition = targetHumanoidRootPart.Position + Vector3.new(0, 3, 0)
+    humanoidRootPart.CFrame = CFrame.new(teleportPosition)
+    
+    -- วิธีที่ 2: ใช้ TweenService (เสริม)
+    local tweenInfo = TweenInfo.new(
+        0.05, -- เวลาสั้นมาก
+        Enum.EasingStyle.Linear,
+        Enum.EasingDirection.Out
+    )
+    
+    local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(teleportPosition)})
+    tween:Play()
+    
+    -- วิธีที่ 3: ยืนยันตำแหน่งซ้ำ (ป้องกัน rollback)
+    wait(0.1)
+    humanoidRootPart.CFrame = CFrame.new(teleportPosition)
+    
+    -- print("Successfully teleported to: " .. playerUnderMouse.Name)
+end
+
+-- IMPROVED: WalkSpeed System
+local function StartWalkSpeed()
+    if not LocalPlayer.Character then return end
+    
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    config["Movement"]["WalkSpeed"]["Active"] = true
+    humanoid.WalkSpeed = config["Movement"]["WalkSpeed"]["Speed"]
+    
+    -- Add repeated setting every frame to prevent being overwritten
+    connections.walkSpeedLoop = RunService.Heartbeat:Connect(function()
+        if config["Movement"]["WalkSpeed"]["Active"] and humanoid then
+            humanoid.WalkSpeed = config["Movement"]["WalkSpeed"]["Speed"]
+        end
+    end)
+    
+    -- print("WalkSpeed: ON - Speed: " .. config["Movement"]["WalkSpeed"]["Speed"])
+end
+
+local function StopWalkSpeed()
+    config["Movement"]["WalkSpeed"]["Active"] = false
+    
+    if connections.walkSpeedLoop then
+        connections.walkSpeedLoop:Disconnect()
+        connections.walkSpeedLoop = nil
+    end
+    
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = originalWalkSpeed
+        end
+    end
+    
+    -- print("WalkSpeed: OFF")
+end
+
+-- IMPROVED: JumpPower System
+local function StartJumpPower()
+    if not LocalPlayer.Character then return end
+    
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    config["Movement"]["JumpPower"]["Active"] = true
+    humanoid.JumpPower = config["Movement"]["JumpPower"]["Power"]
+    
+    -- Add repeated setting every frame to prevent being overwritten
+    connections.jumpPowerLoop = RunService.Heartbeat:Connect(function()
+        if config["Movement"]["JumpPower"]["Active"] and humanoid then
+            humanoid.JumpPower = config["Movement"]["JumpPower"]["Power"]
+        end
+    end)
+    
+    -- print("JumpPower: ON - Power: " .. config["Movement"]["JumpPower"]["Power"])
+end
+
+local function StopJumpPower()
+    config["Movement"]["JumpPower"]["Active"] = false
+    
+    if connections.jumpPowerLoop then
+        connections.jumpPowerLoop:Disconnect()
+        connections.jumpPowerLoop = nil
+    end
+    
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = originalJumpPower
+        end
+    end
+    
+    -- print("JumpPower: OFF")
+end
+
+-- NEW: Spectate System with respawn fix
+local function StartSpectate()
+    if not LocalPlayer.Character then return end
+    
+    -- Determine target to spectate
+    local spectateTarget = nil
+    
+    -- DISABLED: Hybrid mode
+    -- if hybridMode and hybridTarget then
+    --     spectateTarget = hybridTarget
+    -- elseif config["Combat"]["Aimlock"]["Active"] and target then
+    if config["Combat"]["Aimlock"]["Active"] and target then
+        spectateTarget = target
+    elseif config["Combat"]["SilentAim"]["Active"] then
+        if currentSilentMode == "LockOnly" and silentAimLockedTarget then
+            spectateTarget = silentAimLockedTarget
+        elseif currentSilentMode == "FOV" then
+            spectateTarget = GetClosestInSilentFOV()
+            if spectateTarget then
+                spectateTarget = spectateTarget
+            end
+        end
+    elseif config["Combat"]["Triggerbot"]["Active"] and triggerbotLockedTarget then
+        spectateTarget = triggerbotLockedTarget
+    end
+    
+    if not spectateTarget or not spectateTarget.Character then
+        -- print("Spectate: No valid target to spectate")
+        return
+    end
+    
+    config["Movement"]["Spectate"]["Target"] = spectateTarget
+    config["Movement"]["Spectate"]["Active"] = true
+    
+    -- Store original camera settings
+    originalCameraType = Camera.CameraType
+    originalCameraSubject = Camera.CameraSubject
+    
+    -- Set camera to spectate mode
+    Camera.CameraType = Enum.CameraType.Custom
+    Camera.CameraSubject = spectateTarget.Character:FindFirstChild("Humanoid")
+    
+    -- Create connection to update camera position
+    spectateConnection = RunService.RenderStepped:Connect(function()
+        if not config["Movement"]["Spectate"]["Active"] or not config["Movement"]["Spectate"]["Target"] then
+            return
+        end
+        
+        local target = config["Movement"]["Spectate"]["Target"]
+        if not target or not target.Character then
+            StopSpectate()
+            return
+        end
+        
+        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+        if targetHumanoid then
+            Camera.CameraSubject = targetHumanoid
+        end
+    end)
+    
+    -- NEW: Add character respawn detection
+    local respawnConnection
+    respawnConnection = LocalPlayer.CharacterAdded:Connect(function(character)
+        if config["Movement"]["Spectate"]["Active"] and config["Movement"]["Spectate"]["ReturnOnDeath"] then
+            wait(0.5) -- Wait a bit to ensure character is fully loaded
+            StopSpectate()
+            -- print("Spectate: Returned to self after respawn")
+        end
+    end)
+    
+    -- Store connection for cleanup
+    connections.respawnConnection = respawnConnection
+    
+    -- print("Spectate: ON - Target: " .. spectateTarget.Name)
+end
+
+local function StopSpectate()
+    if not config["Movement"]["Spectate"]["Active"] then return end
+    
+    config["Movement"]["Spectate"]["Active"] = false
+    config["Movement"]["Spectate"]["Target"] = nil
+    
+    -- Restore original camera settings
+    Camera.CameraType = originalCameraType
+    Camera.CameraSubject = originalCameraSubject
+    
+    -- Disconnect the connection
+    if spectateConnection then
+        spectateConnection:Disconnect()
+        spectateConnection = nil
+    end
+    
+    -- Disconnect respawn connection
+    if connections.respawnConnection then
+        connections.respawnConnection:Disconnect()
+        connections.respawnConnection = nil
+    end
+    
+    -- print("Spectate: OFF")
+end
+
+-- Input handling
+connections.inputBegan = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Toggle UI
+    if input.KeyCode == config["Visuals"]["UI"]["Key"] then
+        if ScreenGui and MainFrame then
+            MainFrame.Visible = not MainFrame.Visible
+            config["Visuals"]["UI"]["Visible"] = MainFrame.Visible
+        end
+    end
+    
+    -- DISABLED: Toggle Hybrid Mode
+    -- if input.KeyCode == config["Settings"]["HybridMode"] then
+    --     ToggleHybridMode()
+    -- end
+    
+    -- Aimlock toggle
+    if input.KeyCode == config["Combat"]["Aimlock"]["Key"] then
+        if config["Combat"]["Aimlock"]["Type"] == "Toggle" then
+            config["Combat"]["Aimlock"]["Active"] = not config["Combat"]["Aimlock"]["Active"]
+            if config["Combat"]["Aimlock"]["Active"] then
+                if config["Combat"]["Aimlock"]["UseFOV"] then
+                    target = GetClosestInAimbotFOV()
+                    if target then
+                        -- print("Aimlock: ON - FOV Mode - Target: " .. target.Name)
+                        if config["Combat"]["Aimlock"]["StickyAim"] then
+                            stickyLockedTarget = target
+                            -- print("Sticky Aim: LOCKED - " .. target.Name)
+                        end
+                    else
+                        -- print("Aimlock: ON - FOV Mode - No target in FOV")
+                    end
+                else
+                    -- print("Aimlock: ON - Mouse Target Mode")
+                end
+            else
+                -- print("Aimlock: OFF")
+                target = nil
+                stickyLockedTarget = nil
+            end
+        else
+            config["Combat"]["Aimlock"]["Active"] = true
+            if config["Combat"]["Aimlock"]["UseFOV"] then
+                target = GetClosestInAimbotFOV()
+                if target then
+                    -- print("Aimlock: ON - FOV Mode - Target: " .. target.Name)
+                    if config["Combat"]["Aimlock"]["StickyAim"] then
+                        stickyLockedTarget = target
+                        -- print("Sticky Aim: LOCKED - " .. target.Name)
+                    end
+                else
+                    -- print("Aimlock: ON - FOV Mode - No target in FOV")
+                end
+            else
+                -- print("Aimlock: ON - Mouse Target Mode")
+            end
+        end
+    end
+    
+    -- Silent Aim toggle
+    if input.KeyCode == config["Combat"]["SilentAim"]["Key"] then
+        if config["Combat"]["SilentAim"]["Type"] == "Toggle" then
+            config["Combat"]["SilentAim"]["Active"] = not config["Combat"]["SilentAim"]["Active"]
+            SilentAim.Active = config["Combat"]["SilentAim"]["Active"]
+            
+            if config["Combat"]["SilentAim"]["Active"] then
+                -- print("Silent Aim: ON - Mode: " .. currentSilentMode)
+                -- print("Silent Aim: Prediction: X=" .. config["Combat"]["SilentAim"]["Prediction"].X .. " Y=" .. config["Combat"]["SilentAim"]["Prediction"].Y .. " Z=" .. config["Combat"]["SilentAim"]["Prediction"].Z)
+                if currentSilentMode == "LockOnly" and not silentAimLockedTarget then
+                    -- print("Silent Aim LockOnly Mode: No target locked - Press G to lock a target")
+                end
+            else
+                -- print("Silent Aim: OFF")
+                silentAimLockedTarget = nil
+                SilentAim.LockedTarget = nil
+                -- FIXED: Hide LockOnly FOV when Silent Aim is turned off
+                if lockOnlyFovCircle then
+                    lockOnlyFovCircle.Visible = false
+                end
+            end
+        else
+            config["Combat"]["SilentAim"]["Active"] = true
+            SilentAim.Active = true
+            -- print("Silent Aim: ON - Mode: " .. currentSilentMode)
+            -- print("Silent Aim: Prediction: X=" .. config["Combat"]["SilentAim"]["Prediction"].X .. " Y=" .. config["Combat"]["SilentAim"]["Prediction"].Y .. " Z=" .. config["Combat"]["SilentAim"]["Prediction"].Z)
+            if currentSilentMode == "LockOnly" and not silentAimLockedTarget then
+                -- print("Silent Aim LockOnly Mode: No target locked - Press G to lock a target")
+            end
+        end
+    end
+    
+    -- Triggerbot toggle
+-- ในส่วน InputBegan สำหรับ Triggerbot
+if input.KeyCode == config["Combat"]["Triggerbot"]["Key"] then
+    if config["Combat"]["Triggerbot"]["Type"] == "Toggle" then
+        config["Combat"]["Triggerbot"]["Active"] = not config["Combat"]["Triggerbot"]["Active"]
+        if config["Combat"]["Triggerbot"]["Active"] then
+            -- print("Triggerbot: ON - Simple Mode")
+            -- print("Triggerbot: Will fire when enemy is near crosshair")
+        else
+            -- print("Triggerbot: OFF")
+            if triggerbotClicked then
+                mouse1release()
+                triggerbotClicked = false
+            end
+        end
+    else
+        config["Combat"]["Triggerbot"]["Active"] = true
+        -- print("Triggerbot: ON - Simple Mode")
+            local currentWeapon = GetCurrentWeapon()
+            if currentWeapon then
+                local delay = GetWeaponDelay(currentWeapon)
+                -- print("Weapon: " .. currentWeapon .. " | Delay: " .. delay .. "s")
+            end
+        end
+    end
+    
+    -- LockOnly toggle
+    if input.KeyCode == config["Settings"]["LockMouseTarget"] then
+        ToggleLockOnlyMode()
+    end
+    
+    -- NEW: Triggerbot target toggle
+    if input.KeyCode == Enum.KeyCode.N then
+        -- DISABLED: ToggleTriggerbotTarget()
+        -- print("Triggerbot Target Toggle: DISABLED")
+    end
+    
+    -- Switch tracer color
+    if input.KeyCode == config["Visuals"]["Tracer"]["Key"] then
+        SwitchTracerColor()
+    end
+    
+    -- Switch aim mode
+    if input.KeyCode == config["Settings"]["SwitchAimMode"] then
+        if currentAimMode == "MouseMove" then
+            currentAimMode = "Camera"
+        else
+            currentAimMode = "MouseMove"
+        end
+        -- print("Aim Mode: " .. currentAimMode)
+    end
+    
+    -- Switch Silent Aim mode
+    if input.KeyCode == config["Settings"]["SwitchSilentMode"] then
+        if currentSilentMode == "FOV" then
+            currentSilentMode = "LockOnly"
+            SilentAim.Mode = "LockOnly"
+            silentAimLockedTarget = nil
+            SilentAim.LockedTarget = nil
+            -- print("Silent Mode: LockOnly")
+        else
+            currentSilentMode = "FOV"
+            SilentAim.Mode = "FOV"
+            silentAimLockedTarget = nil
+            SilentAim.LockedTarget = nil
+            -- print("Silent Mode: FOV")
+        end
+    end
+    
+    -- Switch hitpart
+    if input.KeyCode == config["Settings"]["SwitchHitpart"] then
+        local hitparts = {"Head", "UpperTorso", "HumanoidRootPart"}
+        local currentIndex = 1
+        for i, part in ipairs(hitparts) do
+            if part == config["Combat"]["Aimlock"]["HitPart"] then
+                currentIndex = i
+                break
+            end
+        end
+        config["Combat"]["Aimlock"]["HitPart"] = hitparts[(currentIndex % #hitparts) + 1]
+        -- print("Aimlock HitPart: " .. config["Combat"]["Aimlock"]["HitPart"])
+    end
+    
+    -- Orbit toggle
+    if input.KeyCode == config["Movement"]["Orbit"]["Key"] then
+        if config["Movement"]["Orbit"]["Type"] == "Hold" then
+            if not config["Movement"]["Orbit"]["Active"] then
+                orbitHoldingKey = true
+                StartOrbit()
+            end
+        else
+            if config["Movement"]["Orbit"]["Active"] then
+                StopOrbit()
+            else
+                StartOrbit()
+            end
+        end
+    end
+    
+    -- Teleport to mouse target
+    if input.KeyCode == config["Movement"]["Teleport"]["Key"] then
+        TeleportToMouseTarget()
+    end
+    
+    -- WalkSpeed toggle
+    if input.KeyCode == config["Movement"]["WalkSpeed"]["Key"] then
+        if config["Movement"]["WalkSpeed"]["Type"] == "Toggle" then
+            if config["Movement"]["WalkSpeed"]["Active"] then
+                StopWalkSpeed()
+            else
+                StartWalkSpeed()
+            end
+        else
+            if not config["Movement"]["WalkSpeed"]["Active"] then
+                StartWalkSpeed()
+            end
+        end
+    end
+    
+    -- JumpPower toggle
+    if input.KeyCode == config["Movement"]["JumpPower"]["Key"] then
+        if config["Movement"]["JumpPower"]["Type"] == "Toggle" then
+            if config["Movement"]["JumpPower"]["Active"] then
+                StopJumpPower()
+            else
+                StartJumpPower()
+            end
+        else
+            if not config["Movement"]["JumpPower"]["Active"] then
+                StartJumpPower()
+            end
+        end
+    end
+    
+    -- Spectate toggle
+    if input.KeyCode == config["Movement"]["Spectate"]["Key"] then
+        if config["Movement"]["Spectate"]["Type"] == "Toggle" then
+            if config["Movement"]["Spectate"]["Active"] then
+                StopSpectate()
+            else
+                StartSpectate()
+            end
+        else
+            if not config["Movement"]["Spectate"]["Active"] then
+                StartSpectate()
+            end
+        end
+    end
+    
+    -- NEW: Toggle Aimbot Shake
+    if input.KeyCode == config["Settings"]["ToggleShake"] then
+        ToggleAimbotShake()
+    end
+    
+    -- NEW: Toggle Visual Hitbox
+    if input.KeyCode == config["Settings"]["ToggleVisualHitbox"] then
+        ToggleVisualHitbox()
+    end
+    
+    -- NEW: Adjust Hitbox Extend X
+    if input.KeyCode == config["Settings"]["AdjustHitboxExtendX"] then
+        AdjustHitboxExtendX()
+    end
+    
+    -- NEW: Adjust Hitbox Extend Y
+    if input.KeyCode == config["Settings"]["AdjustHitboxExtendY"] then
+        AdjustHitboxExtendY()
+    end
+end)
+
+-- Input ended for Hold mode
+connections.inputEnded = UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == config["Combat"]["Aimlock"]["Key"] and config["Combat"]["Aimlock"]["Type"] == "Hold" then
+        if config["Combat"]["Aimlock"]["Active"] then
+            config["Combat"]["Aimlock"]["Active"] = false
+            -- print("Aimlock: OFF")
+            target = nil
+            stickyLockedTarget = nil
+        end
+    end
+    
+    if input.KeyCode == config["Combat"]["SilentAim"]["Key"] and config["Combat"]["SilentAim"]["Type"] == "Hold" then
+        if config["Combat"]["SilentAim"]["Active"] then
+            config["Combat"]["SilentAim"]["Active"] = false
+            SilentAim.Active = false
+            -- print("Silent Aim: OFF")
+            silentAimLockedTarget = nil
+            SilentAim.LockedTarget = nil
+            -- FIXED: Hide LockOnly FOV when Silent Aim is turned off
+            if lockOnlyFovCircle then
+                lockOnlyFovCircle.Visible = false
+            end
+        end
+    end
+    
+    if input.KeyCode == config["Combat"]["Triggerbot"]["Key"] and config["Combat"]["Triggerbot"]["Type"] == "Hold" then
+        if config["Combat"]["Triggerbot"]["Active"] then
+            config["Combat"]["Triggerbot"]["Active"] = false
+            -- print("Triggerbot: OFF")
+            if triggerbotClicked then
+                mouse1release()
+                triggerbotClicked = false
+            end
+        end
+    end
+    
+    if input.KeyCode == config["Movement"]["Orbit"]["Key"] and config["Movement"]["Orbit"]["Type"] == "Hold" then
+        if config["Movement"]["Orbit"]["Active"] and orbitHoldingKey then
+            orbitHoldingKey = false
+            StopOrbit()
+        end
+    end
+    
+    if input.KeyCode == config["Movement"]["WalkSpeed"]["Key"] and config["Movement"]["WalkSpeed"]["Type"] == "Hold" then
+        if config["Movement"]["WalkSpeed"]["Active"] then
+            StopWalkSpeed()
+        end
+    end
+    
+    if input.KeyCode == config["Movement"]["JumpPower"]["Key"] and config["Movement"]["JumpPower"]["Type"] == "Hold" then
+        if config["Movement"]["JumpPower"]["Active"] then
+            StopJumpPower()
+        end
+    end
+    
+    if input.KeyCode == config["Movement"]["Spectate"]["Key"] and config["Movement"]["Spectate"]["Type"] == "Hold" then
+        if config["Movement"]["Spectate"]["Active"] then
+            StopSpectate()
+        end
+    end
+end)
+
+-- Main loop
+connections.renderStepped = RunService.RenderStepped:Connect(function()
+    -- ตรวจสอบ Knife Check ก่อน
+    local holdingKnife = config["Combat"]["Checks"]["KnifeCheck"]["Enabled"] and 
+                        config["Combat"]["Checks"]["KnifeCheck"]["IgnoreKnife"] and 
+                        IsHoldingKnife()
+    
+    -- อัพเดท Visuals เสมอ
+    UpdateVisuals()
+    UpdateSilentAim()
+
+    if holdingKnife then
+        -- ถือมีด - ปิดระบบ Combat แต่ให้ Visuals ทำงานต่อ
+        if targetText then
+            targetText.Text = "Target: None [KNIFE MODE - COMBAT DISABLED]"
+        end
+        
+        -- เคลียร์ target ทั้งหมด
+        target = nil
+        stickyLockedTarget = nil
+        silentAimLockedTarget = nil
+        triggerbotLockedTarget = nil
+        
+        -- ปิด Tracer
+        if tracerLine then
+            tracerLine.Visible = false
+        end
+        
+        -- ไม่ต้องเรียกระบบ Combat อื่นๆ
+        
+    else
+        -- ไม่ถือมีด - ระบบทำงานปกติ
+        if config["Combat"]["Triggerbot"]["Active"] then
+            local isValidTarget, targetPlayer = IsMouseOverValidTarget()
+            if isValidTarget then
+                -- print("Triggerbot: Valid target - " .. targetPlayer.Name)
+            end
+        end
+
+        UpdateTriggerbot()
+        UpdateTriggerbotTarget()
+        
+        -- ตรวจสอบว่าเป้าหมายยังอยู่ในเกมหรือไม่
+        if target and not Players:FindFirstChild(target.Name) then
+            target = nil
+            stickyLockedTarget = nil
+            -- print("Aimlock: Target left game - Auto unlocked")
+        end
+        
+        if silentAimLockedTarget and not Players:FindFirstChild(silentAimLockedTarget.Name) then
+            silentAimLockedTarget = nil
+            SilentAim.LockedTarget = nil
+            -- print("Silent Aim LockOnly: Target left game - Auto unlocked")
+        end
+        
+        if triggerbotLockedTarget and not Players:FindFirstChild(triggerbotLockedTarget.Name) then
+            triggerbotLockedTarget = nil
+            -- print("Triggerbot: Target left game - Auto unlocked")
+        end
+        
+        -- Normal mode target management
+        if config["Combat"]["Aimlock"]["Active"] and not target and config["Combat"]["Aimlock"]["UseFOV"] then
+            target = GetClosestInAimbotFOV()
+        end
+        
+        if config["Combat"]["SilentAim"]["Active"] and currentSilentMode == "FOV" then
+            silentAimTarget = GetClosestInSilentFOV()
+        end
+        
+        if config["Combat"]["SilentAim"]["Active"] and currentSilentMode == "LockOnly" and silentAimLockedTarget then
+            if not IsValidTarget(silentAimLockedTarget) or (config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(silentAimLockedTarget)) then
+                -- print("Silent Aim LockOnly: Target unlocked (invalid/knocked)")
+                silentAimLockedTarget = nil
+                SilentAim.LockedTarget = nil
+            end
+        end
+        
+        if config["Combat"]["Triggerbot"]["Active"] and triggerbotLockedTarget then
+            if not IsValidTarget(triggerbotLockedTarget) or (config["Combat"]["Checks"]["KnockCheck"] and IsPlayerKnocked(triggerbotLockedTarget)) then
+                -- print("Triggerbot: Target unlocked (invalid/knocked)")
+                triggerbotLockedTarget = nil
+            end
+        end
+        
+        if config["Combat"]["Aimlock"]["Active"] and target then
+            ApplyAimlock()
+        end
+    end
+    
+    -- ระบบ Movement ทำงานเสมอ (ไม่ว่าถือมีดหรือไม่)
+    if config["Movement"]["Orbit"]["Target"] and not Players:FindFirstChild(config["Movement"]["Orbit"]["Target"].Name) then
+        config["Movement"]["Orbit"]["Target"] = nil
+        config["Movement"]["Orbit"]["Active"] = false
+        -- print("Orbit: Target left game - Auto stopped")
+    end
+    
+    if config["Movement"]["Spectate"]["Target"] and not Players:FindFirstChild(config["Movement"]["Spectate"]["Target"].Name) then
+        config["Movement"]["Spectate"]["Target"] = nil
+        config["Movement"]["Spectate"]["Active"] = false
+        Camera.CameraType = originalCameraType
+        Camera.CameraSubject = originalCameraSubject
+        -- print("Spectate: Target left game - Auto stopped")
+    end
+    
+    if config["Movement"]["Orbit"]["Active"] and config["Movement"]["Orbit"]["Target"] then
+        local targetCharacter = config["Movement"]["Orbit"]["Target"].Character
+        if targetCharacter then
+            local humanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart and LocalPlayer.Character then
+                local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if localRoot then
+                    orbitAngle = orbitAngle + config["Movement"]["Orbit"]["Speed"] * 0.01
+                    
+                    local orbitPos = humanoidRootPart.Position + 
+                        Vector3.new(
+                            math.cos(orbitAngle) * config["Movement"]["Orbit"]["Radius"],
+                            config["Movement"]["Orbit"]["Height"],
+                            math.sin(orbitAngle) * config["Movement"]["Orbit"]["Radius"]
+                        )
+                    
+                    localRoot.CFrame = CFrame.new(orbitPos, humanoidRootPart.Position)
+                end
+            end
+        else
+            -- print("Orbit: Target lost character, stopping")
+            StopOrbit()
+        end
+    end
+    
+    if config["Movement"]["WalkSpeed"]["Active"] then
+        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = config["Movement"]["WalkSpeed"]["Speed"]
+        end
+    end
+    
+    if config["Movement"]["JumpPower"]["Active"] then
+        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = config["Movement"]["JumpPower"]["Power"]
+        end
+    end
+end)
+
+-- Safe setup
+pcall(InitializeSilentAim)
+pcall(CreateDrawings)
+
+-- Cleanup function
+_G.AimlockCleanup = function()
+    _G.AimlockRunning = false
+    
+    for _, conn in pairs(connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    
+    local drawings = {aimbotFovCircle, silentAimFovCircle, lockOnlyFovCircle, tracerLine, targetText, modeText}
+    for _, drawing in pairs(drawings) do
+        if drawing then
+            pcall(function() 
+                drawing.Visible = false
+                drawing:Remove() 
+            end)
+        end
+    end
+    
+    -- Clear all drawing references
+    aimbotFovCircle = nil
+    silentAimFovCircle = nil
+    lockOnlyFovCircle = nil
+    tracerLine = nil
+    targetText = nil
+    modeText = nil
+    
+    -- Clean up visual hitboxes
+    for player, _ in pairs(visualHitboxes) do
+        RemoveVisualHitbox(player)
+    end
+    visualHitboxes = {}
+    
+    -- FIXED: Clean up ESP drawings properly
+    for player, _ in pairs(espDrawings) do
+        RemoveESP(player)
+    end
+    espDrawings = {}
+    
+    if ScreenGui then
+        ScreenGui:Destroy()
+        ScreenGui = nil
+    end
+    
+    if aimbotFovSettingsFrame then
+        aimbotFovSettingsFrame:Destroy()
+        aimbotFovSettingsFrame = nil
+    end
+    
+    if silentAimFovSettingsFrame then
+        silentAimFovSettingsFrame:Destroy()
+        silentAimFovSettingsFrame = nil
+    end
+    
+    if lockOnlyFovSettingsFrame then
+        lockOnlyFovSettingsFrame:Destroy()
+        lockOnlyFovSettingsFrame = nil
+    end
+    
+    if config["Movement"]["Orbit"]["Active"] then
+        StopOrbit()
+    end
+    
+    if config["Movement"]["Spectate"]["Active"] then
+        StopSpectate()
+    end
+    
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = originalWalkSpeed
+            humanoid.JumpPower = originalJumpPower
+        end
+    end
+    
+    -- Reset Silent Aim
+    SilentAim.Enabled = false
+    SilentAim.Active = false
+    SilentAim.LockedTarget = nil
+    silentAimLockedTarget = nil
+    
+    -- Reset Hybrid Mode
+    hybridMode = false
+    hybridTarget = nil
+    
+    -- Reset Triggerbot
+    if triggerbotClicked then
+        mouse1release()
+        triggerbotClicked = false
+    end
+    
+    -- Clear all global variables
+    for k, v in pairs(getgenv()) do
+        if string.find(tostring(k), "Silent") or string.find(tostring(k), "Aimlock") or string.find(tostring(k), "Triggerbot") or string.find(tostring(k), "FOV") then
+            getgenv()[k] = nil
+        end
+    end
+    
+    -- print("✅ Script cleanup completed")
+end
+
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
+-- i love you
