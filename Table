@@ -69,6 +69,8 @@ getgenv().morte = {
             ["Key"] = Enum.KeyCode.E,
             ["Type"] = "Toggle",
             ["Delay"] = 0,
+            ["FOVRadius"] = 1000,
+            ["UseFOV"] = true,
             ["Delays"] = {
                 ["Enabled"] = false,
                 ["Guns"] = {
@@ -156,6 +158,13 @@ getgenv().morte = {
             ["Filled"] = false
         },
         ["SilentAimFOV"] = {
+            ["Show"] = false,
+            ["Color"] = Color3.fromRGB(255, 0, 0),
+            ["Thickness"] = 2,
+            ["Transparency"] = 0.3,
+            ["Filled"] = false
+        },
+        ["TriggerBotFOV"] = {
             ["Show"] = false,
             ["Color"] = Color3.fromRGB(255, 0, 0),
             ["Thickness"] = 2,
