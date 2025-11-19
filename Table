@@ -267,17 +267,6 @@ getgenv().morte = {
                 ["MaxDistance"] = 500
             }
         },
-        ["UI"] = {
-            ["Enabled"] = true,
-            ["Visible"] = false,
-            ["Position"] = UDim2.new(0.5, -200, 0.5, -150),
-            ["BackgroundColor"] = Color3.fromRGB(30, 30, 30),
-            ["TextColor"] = Color3.fromRGB(255, 255, 255),
-            ["ButtonColor"] = Color3.fromRGB(50, 50, 50),
-            ["ButtonHoverColor"] = Color3.fromRGB(70, 70, 70),
-            ["Key"] = Enum.KeyCode.RightBracket
-        }
-    },
     ["Settings"] = {
         ["SwitchSilentMode"] = Enum.KeyCode.G
     }
