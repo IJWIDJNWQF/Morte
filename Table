@@ -9,16 +9,16 @@ getgenv().morte = {
     ["Key"] = "",
     ["Combat"] = {
         ["Aimlock"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
-            ["Smoothness"] = 0.45,
-            ["Prediction"] = Vector3.new(0.13, 0.05, 0.05),
+            ["Smoothness"] = 0,
+            ["Prediction"] = Vector3.new(0.0, 0.00, 0.00),
             ["Type"] = "Hold",
             ["AimMode"] = "MouseMove",
-            ["StickyAim"] = true,
-            ["StickyStrength"] = 0.3,
-            ["Randomize"] = 0.02,
-            ["FOVRadius"] = 1000,
+            ["StickyAim"] = false,
+            ["StickyStrength"] = 0,
+            ["Randomize"] = 0.00,
+            ["FOVRadius"] = 100,
             ["UseFOV"] = true,
             ["HitPart"] = "Head",
             ["Key"] = Enum.KeyCode.Q,
@@ -31,24 +31,24 @@ getgenv().morte = {
                 }
             },
             ["Shake"] = {
-                ["Enabled"] = true,
+                ["Enabled"] = false,
                 ["Vertical"] = {
-                    ["Negative"] = 5,
-                    ["Positive"] = 5
+                    ["Negative"] = 0,
+                    ["Positive"] = 0
                 },
                 ["Horizontal"] = {
-                    ["Negative"] = 5,
-                    ["Positive"] = 5
+                    ["Negative"] = 0,
+                    ["Positive"] = 0
                 }
             }
         },
         ["SilentAim"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
             ["HitPart"] = "Head",
             ["HitChance"] = 100,
             ["Prediction"] = Vector3.new(0, 0, 0),
-            ["FOVRadius"] = 1000,
+            ["FOVRadius"] = 100,
             ["ShowFOV"] = true,
             ["SilentMode"] = "FOV",
             ["Type"] = "Toggle",
@@ -64,12 +64,12 @@ getgenv().morte = {
             }
         },
         ["Triggerbot"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
             ["Key"] = Enum.KeyCode.E,
-            ["Type"] = "Toggle",
+            ["Type"] = "Hold",
             ["Delay"] = 0,
-            ["FOVRadius"] = 1000,
+            ["FOVRadius"] = 100,
             ["UseFOV"] = true,
             ["Delays"] = {
                 ["Enabled"] = false,
@@ -95,7 +95,7 @@ getgenv().morte = {
             }
         },
         ["Hitbox"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["VisualHitbox"] = {
                 ["Enabled"] = false,
                 ["Color"] = Color3.fromRGB(255, 0, 0),
@@ -110,7 +110,7 @@ getgenv().morte = {
     },
     ["Movement"] = {
         ["Orbit"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
             ["Speed"] = 3,
             ["Radius"] = 5,
@@ -120,27 +120,27 @@ getgenv().morte = {
             ["Key"] = Enum.KeyCode.P
         },
         ["Teleport"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Type"] = "Instant",
             ["SmoothSpeed"] = 0.1,
             ["Key"] = Enum.KeyCode.F
         },
         ["WalkSpeed"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
             ["Speed"] = 250,
             ["Type"] = "Toggle",
             ["Key"] = Enum.KeyCode.C
         },
         ["JumpPower"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
             ["Power"] = 100,
             ["Type"] = "Toggle",
             ["Key"] = Enum.KeyCode.M
         },
         ["Spectate"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["Active"] = false,
             ["Type"] = "Toggle",
             ["Target"] = nil,
@@ -151,7 +151,7 @@ getgenv().morte = {
     },
     ["Visuals"] = {
         ["AimbotFOV"] = {
-            ["Show"] = true,
+            ["Show"] = false,
             ["Color"] = Color3.fromRGB(255, 0, 0),
             ["Thickness"] = 2,
             ["Transparency"] = 0.3,
@@ -221,7 +221,7 @@ getgenv().morte = {
             ["Size"] = 16
         },
         ["ESP"] = {
-            ["Enabled"] = true,
+            ["Enabled"] = false,
             ["ESPBox"] = {
                 ["Enabled"] = false,
                 ["Type"] = "2D",
