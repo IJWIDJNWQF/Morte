@@ -267,6 +267,7 @@ getgenv().morte = {
                 ["MaxDistance"] = 500
             }
         },
+    },
     ["Settings"] = {
         ["SwitchSilentMode"] = Enum.KeyCode.G
     }
