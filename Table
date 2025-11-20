@@ -1,9 +1,10 @@
 
--- Visuals Only -- Put IDS
+-- Put IDS
 getgenv().AccessoryIDs = {
-    6714486677,8923152393,15320177437,16560243838,14488197116,17071910502,97046490971756 -- Visuals Only -- Put IDS
+     -- Example 13139039772,4197739997,7699174,15012459085,90485447540578,17234194471,73906331789938 -- Put IDS
+    0  -- Put IDS
 }
--- Visuals Only -- Put IDS
+-- Put IDS
 
 getgenv().morte = {
     ["Key"] = "",
