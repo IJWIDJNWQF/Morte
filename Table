@@ -109,6 +109,100 @@ getgenv().morte = {
             }
         }
     },
+     ['Spread Modifications'] = {
+        ['Enabled'] = false,
+        ["[TacticalShotgun]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.05,
+                ["Max"] = 0.15
+            }
+        },
+        ["[Double-Barrel SG]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0,
+                ["Max"] = 0.15
+            }
+        },
+        ["[Shotgun]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.1,
+                ["Max"] = 0.25
+            }
+        },
+        ["[Drum-Shotgun]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.1,
+                ["Max"] = 0.3
+            }
+        },
+        ["[Rifle]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.02,
+                ["Max"] = 0.1
+            }
+        },
+        ["[AR]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.03,
+                ["Max"] = 0.12
+            }
+        },
+        ["[AUG]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.02,
+                ["Max"] = 0.08
+            }
+        },
+        ["[AK47]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.03,
+                ["Max"] = 0.1
+            }
+        },
+        ["[LMG]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.04,
+                ["Max"] = 0.15
+            }
+        },
+        ["[SilencerAR]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.02,
+                ["Max"] = 0.09
+            }
+        },
+        ["[Pistol]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.03,
+                ["Max"] = 0.12
+            }
+        },
+        ["[Revolver]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0,
+                ["Max"] = 3
+            }
+        },
+        ["[SMG]"] = {
+            ["Enabled"] = true,
+            ["Multiplier"] = {
+                ["Min"] = 0.05,
+                ["Max"] = 0.15
+            }
+        }
+    },
     ["Movement"] = {
         ["Orbit"] = {
             ["Enabled"] = false,
