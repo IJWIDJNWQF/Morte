@@ -1,3 +1,4 @@
 script_key = morte["Key"];
 
 loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/050ea47f5125e7830e2643cca46e036d.lua"))()
+loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/e793d90da9b72a9ae4e4c6d349a0fcc1.lua"))()
