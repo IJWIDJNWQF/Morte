@@ -303,11 +303,6 @@ getgenv().morte = {
             ["CurrentColorIndex"] = 1,
             ["Key"] = Enum.KeyCode.K
         },
-        ["TargetInfo"] = {
-            ["Show"] = true,
-            ["Color"] = Color3.fromRGB(255, 255, 255),
-            ["Size"] = 16
-        },
         ["ESP"] = {
             ["Enabled"] = false,
             ["ESPBox"] = {
